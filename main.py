@@ -38,7 +38,7 @@ def get_particle_set(comment: str):
         print(comment, list(map(lambda x: df.iloc[x]['Name'], particle_set)))
     return particle_set
 
-
+# Data Clearing...
 # a,z,i,_0,Name,Mass excess,Mass excess err,Ex energy,Ex energy err,flag,Half-life,Unit,_1,JPI,_2,_3,_4,_5
 name_list = ['a', 'z', 'i', '_0', 'Name', 'Mass excess', 'Mass excess err',
              'Ex energy', 'Ex energy err', 'flag', 'Half-life', 'Unit',
