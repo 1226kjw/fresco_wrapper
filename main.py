@@ -67,4 +67,3 @@ for i in params:
 projectile = get_particle_set('Projectile ')
 target = get_particle_set('Target ')
 
-with open('input.in', 'w') as f:
