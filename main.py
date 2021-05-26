@@ -38,6 +38,9 @@ def get_particle_set(comment: str):
         print(comment, list(map(lambda x: df.iloc[x]['Name'], particle_set)))
     return particle_set
 
+#def write_line(section: str):
+
+
 # Data Clearing...
 # a,z,i,_0,Name,Mass excess,Mass excess err,Ex energy,Ex energy err,flag,Half-life,Unit,_1,JPI,_2,_3,_4,_5
 name_list = ['a', 'z', 'i', '_0', 'Name', 'Mass excess', 'Mass excess err',
@@ -53,17 +56,33 @@ df.drop(['_0', '_1', '_2', '_3', '_4', '_5', 'JPI', 'Mass excess', 'Mass excess 
         axis=1, inplace=True)
 # a, z, i, Name, Ex energy, Ex energy err, flag, Half-life, Unit, Mass, PI, J: list
 
+indent = ' '
+depth = 0
 f = open('input.in', 'w')
-
-param_list = ['hcm', 'rmatch', 'rintp', 'rasym', 'accrcy', 'jtmin', 'jtmax', 'absend', 'jump', 'jbord',
-              'thmin', 'thmax', 'thinc', 'ips', 'iblock', 'chans', 'smats', 'xstabl', 'nlpl', 'elab']
+f.write(input('Title: ') + '\n')
+f.write(indent * depth + 'NAMELIST\n')
+depth += 1
+param_list = ['hcm', 'rmatch', 'rintp', 'rasym', 'accrcy', 'jtmin', 'jtmax', 'absend', 'jump(1:6)', 'jbord',
+              'thmin', 'thmax', 'thinc', 'ips', 'iblock', 'chans', 'smats', 'xstabl', 'nlpl', 'elab(1)']
 params = {}
-for i in param_list:
-    param = input(i)
-    params[i] = param
-for i in params:
-    f.write(i + '=' + params[i] + '\n')
+f.write(indent * depth + '&FRESCO\n')
+depth += 1
+# for i in param_list:
+#     param = input(i + ': ')
+#     if param == '':
+#         continue
+#     params[i] = param
+# for i in params:
+#     f.write(indent * depth + i + '=' + params[i] + '\n')
+f.write(indent * depth + '/\n')
+depth -= 1
 
 projectile = get_particle_set('Projectile ')
 target = get_particle_set('Target ')
+
+f.write(indent * depth + '&PARTITION\n')
+depth += 1
+f.write(indent * depth + 'namep=' + "'" + df.iloc[projectile[0]]['Name'] + "'  ")
+f.write(indent * depth + 'massp=' + "'" + df.iloc[projectile[0]]['Mass'] + "'  ")
+f.write(indent * depth + 'namep=' + "'" + df.iloc[projectile[0]]['Name'] + "'  ")
 
