@@ -1,0 +1,26 @@
+0
+ NAMELIST
+  &FRESCO
+   hcm=0
+   rmatch=0
+   rintp=0
+   rasym=0
+   accrcy=0
+   jtmin=0
+   jtmax=0
+   absend=0
+   jump(1:6)=0
+   jbord=0
+   thmin=0
+   thmax=0
+   thinc=0
+   ips=0
+   iblock=0
+   chans=0
+   smats=0
+   xstabl=0
+   nlpl=0
+   elab(1)=0
+   /
+  &PARTITION
+   namep='11Be'     massp='11.021661083934417'     namep='11Be'  
