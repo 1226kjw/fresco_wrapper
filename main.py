@@ -1,5 +1,6 @@
 import pandas as pd
 from fractions import Fraction
+import subprocess
 
 def parsing_spin(j: str):
     j = ''.join(i for i in j if i not in '()#-+*T=<>.' and not i.islower())
@@ -71,46 +72,67 @@ name_list = ['a', 'z', 'i', '_0', 'Name', 'Mass excess', 'Mass excess err',
 type_list = {i: str for i in name_list}
 df = pd.read_csv('nubase2016.csv', names=name_list, dtype=type_list, keep_default_na=False)
 pd.set_option('display.max_columns', None)
-df['Mass'] = df['a'].apply(int) + df['Mass excess'].apply(lambda x: float(x.strip('#')) / 931494.013 if x != '' else 0)
+df['a'] = df['a'].apply(int)
+df['z'] = df['z'].apply(int)
+df['Mass'] = df['a'] + df['Mass excess'].apply(lambda x: float(x.strip('#')) / 931494.013 if x != '' else 0)
 df['PI'] = df['JPI'].apply(lambda x: -1 if '-' in x else 1)
 df['J'] = df['JPI'].apply(parsing_spin)
 df.drop(['_0', '_1', '_2', '_3', '_4', '_5', 'JPI', 'Mass excess', 'Mass excess err', 'flag', 'Half-life', 'Unit'],
         axis=1, inplace=True)
 # a, z, i, Name, Ex energy, Ex energy err, flag, Half-life, Unit, Mass, PI, J: list
 
+input_folder = "inputs/"
+output_folder = "outputs/"
+input_file_name = input("input file name: ")
+while '/' in input_file_name:
+    print("filename cannot contain "/"")
+    input_file_name = input("input file name: ")
+f = open(input_folder + input_file_name, 'w')
+f.write(input("Title: ") + '\n')
 
-
-indent = ' '
-depth = 1
-
-input_file_name = input('input file name: ')
-f = open(input_file_name, 'w')
-f.write(input('Title: ') + '\n')
-
-f.write(indent * depth + 'NAMELIST\n')
-depth += 1
+f.write("NAMELIST\n")
 param_list = ['hcm', 'rmatch', 'rintp', 'rasym', 'accrcy', 'jtmin', 'jtmax', 'absend', 'jump(1:6)', 'jbord',
               'thmin', 'thmax', 'thinc', 'ips', 'iblock', 'chans', 'smats', 'xstabl', 'nlpl', 'elab(1)']
 params = {}
-f.write(indent * depth + '&FRESCO\n')
-depth += 1
+f.write(" &FRESCO\n")
 for i in param_list:
-    param = input(i + ': ')
+    param = input(i + ": ")
     if param == '':
         continue
     params[i] = param
 for i in params:
-    f.write(indent * depth + i + '=' + params[i] + '\n')
-f.write(indent * depth + '/\n')
-depth -= 1
+    f.write('  ' + i + '=' + params[i] + '\n')
+f.write("  /\n")
 
+projectile = get_particle_set("Projectile ")
+target = get_particle_set("Target ")
 
-projectile = get_particle_set('Projectile ')
-target = get_particle_set('Target ')
+f.write(" &PARTITION\n")
+partitions = {}
+f.write("  namep='" + df.iloc[projectile[0]]['Name'][:8] + "'")
+f.write("  massp=" + str(df.iloc[projectile[0]]['Mass']))
+f.write("  zp=" + str(df.iloc[projectile[0]]['z']))
+f.write("  namet='" + df.iloc[target[0]]['Name'][:8] + "'")
+f.write("  masst=" + str(df.iloc[target[0]]['Mass']))
+f.write("  zt=" + str(df.iloc[target[0]]['z']))
+for i in ["nex", "pwf", "qval"]:
+    partition = input(i + ': ')
+    if partition == '':
+        continue
+    partitions[i] = partition
+for i in partitions:
+    f.write("  " + i + '=' + params[i])
+f.write("\n  /")
 
-f.write(indent * depth + '&PARTITION\n')
-depth += 1
-f.write(indent * depth + 'namep=' + "'" + df.iloc[projectile[0]]['Name'][:8] + "'  ")
-f.write(indent * depth + 'massp=' + str(df.iloc[projectile[0]]['Mass']) + "   ")
+# -----------------------------
+f.write(" &STATES\n")
 
+f.close()
 
+input_file_name = "be11.frin"
+subprocess.call("fresco <" + input_folder + input_file_name +
+                ">" + input_file_name + ".out", shell=True)
+subprocess.call("mkdir -p " + output_folder + input_file_name, shell=True)
+subprocess.call("mv fort.* " + output_folder + input_file_name, shell=True)
+subprocess.call("mv " + input_file_name + ".out "
+                + output_folder + input_file_name, shell=True)
