@@ -1,0 +1,7 @@
+
+NAMELIST
+ &FRESCO
+  /
+ &PARTITION
+  namep='11Be'  massp=11.021661083934417  zp=4  namet='197Au'  masst=196.9665701555078  zt=79
+  / &STATES

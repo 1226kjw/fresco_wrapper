@@ -102,7 +102,7 @@ for i in param_list:
     params[i] = param
 for i in params:
     f.write('  ' + i + '=' + params[i] + '\n')
-f.write("  /\n")
+f.write(" /\n")
 
 projectile = get_particle_set("Projectile ")
 target = get_particle_set("Target ")
@@ -122,7 +122,7 @@ for i in ["nex", "pwf", "qval"]:
     partitions[i] = partition
 for i in partitions:
     f.write("  " + i + '=' + params[i])
-f.write("\n  /")
+f.write("\n /\n")
 
 # -----------------------------
 f.write(" &STATES\n")
