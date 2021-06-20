@@ -22,11 +22,13 @@ class Input:
             print("newline in comment!")
             exit(0)
         self.filename = filename
+        self.output = self.filename[:self.filename.find('.') if '.' in self.filename else None] + '.out'
         self.comment = comment + '\n'
         self.parameters = {}
         self.projectile = []
         self.target = []
         self.states = []
+        self.potentials = []
 
     def set_parameters(self, par: dict):
         for i in par:
@@ -54,6 +56,14 @@ class Input:
         else:
             self.target.append(df[df['Name'] == parsed_str].index[0])
 
+    def set_state(self, state: dict):
+        self.states.append(state)
+
+    def set_pot(self, pot: dict, step=None):
+        self.potentials.append(pot)
+        if step:
+            self.potentials[-1]['step'] = step
+
     def write_input(self):
         with open(self.filename, 'w') as f:
             f.write(self.comment)
@@ -68,13 +78,43 @@ class Input:
                 else:
                     f.write(''.join(['  ', i, '=', str(self.parameters[i]), '\n']))
             f.write('  /\n\n')
+
             f.write(' &PARTITION\n')
             for i in self.projectile:
                 write_pt(f, df.iloc[i], 'p')
             f.write('  nex=2  pwf=T\n')
             for i in self.target:
                 write_pt(f, df.iloc[i], 't')
-            f.write('  qval=0.0000/\n')
+            f.write('  qval=0.0000 /\n')
+
+            for i in self.states:
+                f.write('   &STATES ')
+                for j in i:
+                    f.write(' %s=%4g' % (j, i[j]))
+                f.write(' /\n')
+            f.write(' &partition /\n\n')
+
+            for i in self.potentials:
+                f.write(' &pot')
+                for j in i:
+                    if j != 'step':
+                        if type(i[j]) is not list:
+                            f.write(' %s=%3s' % (j, i[j]))
+                        else:
+                            f.write(' %s(1:%d)=' % (j, len(i[j])))
+                            for k in i[j]:
+                                f.write(' %s' % k)
+                f.write(' /\n')
+                if 'step' in i:
+                    for j in i['step']:
+                        f.write('  &step')
+                        for k in j:
+                            f.write(' %s=%3g' % (k, j[k]))
+                        f.write(' /\n')
+            f.write(' &pot /\n\n')
+
+            f.write(' &overlap /\n\n')
+            f.write(' &coupling /')
 
     def run(self):
         new_dir = self.filename[:self.filename.find('.') if '.' in self.filename else None]
@@ -83,11 +123,10 @@ class Input:
         except FileExistsError:
             for i in os.listdir(new_dir):
                 os.remove('%s/%s' % (new_dir, i))
-        # subprocess.call("fresco <" + self.filename + ">" + self.filename + ".out", shell=True)
-        # subprocess.call("mkdir -p " + output_folder + input_file, shell=True)
-        # subprocess.call("mv fort.* " + output_folder + input_file, shell=True)
-        # subprocess.call("mv " + input_file + ".out "
-        #                 + output_folder + input_file, shell=True)
+        self.output = new_dir + '/' + self.output + '.out'
+        subprocess.call("fresco < %s > %s" % (self.filename, self.output), shell=True)
+        subprocess.call("mv fort.* %s" % new_dir, shell=True)
+        subprocess.call("mv %s %s" % (self.filename, self.output))
 
 
 
@@ -171,6 +210,8 @@ df.drop(['_0', '_1', '_2', '_3', '_4', '_5', 'JPI', 'Mass excess', 'Mass excess 
         axis=1, inplace=True)
 # a, z, i, Name, Ex energy, Ex energy err, flag, Half-life, Unit, Mass, PI, J: list
 
+
+
 frin = Input('sample.frin', '11Be + 197Au')
 frin.set_parameters({
     'hcm'       : 0.040,
@@ -198,67 +239,72 @@ frin.set_parameters({
 frin.set_projectile("11Be")
 frin.set_target("197Au")
 
+frin.set_state({
+    'jp'        : 0.5,
+    'ptyp'      : 1,
+    'ep'        : 0.0000,
+    'cpot'      : 1,
+    'jt'        : 0.0,
+    'ptyt'      : 1,
+    'et'        : 0.0000,
+})
+frin.set_state({
+    'jp'        : 0.5,
+    'ptyp'      : -1,
+    'ep'        : 0.3200,
+    'cpot'      : 1,
+    'copyt'     : 1,
+})
+
+frin.set_pot({
+    'kp'        : 1,
+    'type'      : 0,
+    'p'         : [197.000, 11.0000, 0.0010],
+})
+frin.set_pot({
+    'kp'        : 1,
+    'type'      : 12,
+    'p'         : [0.482, 0.0000, 0.0000]},
+    step=[
+    {
+        'ib'    : 1,
+        'ia'    : 2,
+        'k'     : 1,
+        'str'   : 0.4817
+    },
+    {
+        'ib'    : -2,
+        'ia'    : 1,
+        'k'     : 1,
+        'str'   : 0.4817
+    }]
+)
+
+frin.set_pot({
+    'kp'        : 1,
+    'type'      : 1,
+    'p'         : [40.000, 1.2290, 0.6120, 15.0000, 1.2290, 0.6120, 0.0000],
+})
+frin.set_pot({
+    'kp'        : 1,
+    'type'      : 12,
+    'itt'       : 'F',
+    'shape'     : 12,
+    'p'         : [0.497, 0.0000, 0.0000]},
+    step=[
+    {
+        'ib'    : 1,
+        'ia'    : 2,
+        'k'     : 1,
+        'str'   : 0.4968
+    },
+    {
+        'ib'    : -2,
+        'ia'    : 1,
+        'k'     : 1,
+        'str'   : 0.4968
+    }]
+)
 
 frin.write_input()
 frin.run()
-
-
-
-"""
-input_folder = "inputs/"
-output_folder = "outputs/"
-input_file = input("input file name: ")
-while '/' in input_file:
-    print("filename cannot contain '/'")
-    input_file = input("input file name: ")
-input_file = input_folder + input_file
-
-f = open(input_file, 'w')
-f.write(input("Title: ") + '\n')
-
-f.write("NAMELIST\n")
-param_list = ['hcm', 'rmatch', 'rintp', 'rasym', 'accrcy', 'jtmin', 'jtmax', 'absend', 'jump(1:6)', 'jbord',
-              'thmin', 'thmax', 'thinc', 'ips', 'iblock', 'chans', 'smats', 'xstabl', 'nlpl', 'elab(1)']
-params = {}
-f.write(" &FRESCO\n")
-for i in param_list:
-    param = input(i + ": ")
-    if param == '':
-        continue
-    params[i] = param
-for i in params:
-    f.write('  ' + i + '=' + params[i] + '\n')
-f.write(" /\n")
-
-projectile = get_particle_set("Projectile ")
-target = get_particle_set("Target ")
-
-f.write(" &PARTITION\n")
-partitions = {}
-f.write("  namep='" + df.iloc[projectile[0]]['Name'][:8] + "'")
-f.write("  massp=" + str(df.iloc[projectile[0]]['Mass']))
-f.write("  zp=" + str(df.iloc[projectile[0]]['z']))
-f.write("  namet='" + df.iloc[target[0]]['Name'][:8] + "'")
-f.write("  masst=" + str(df.iloc[target[0]]['Mass']))
-f.write("  zt=" + str(df.iloc[target[0]]['z']))
-for i in ["nex", "pwf", "qval"]:
-    partition = input(i + ': ')
-    if partition == '':
-        continue
-    partitions[i] = partition
-for i in partitions:
-    f.write("  " + i + '=' + params[i])
-f.write("\n /\n")
-
-# -----------------------------
-f.write(" &STATES\n")
-
-f.close()
-
-input_file = "be11.frin"
-subprocess.call("fresco <" + input_file + ">" + input_file + ".out", shell=True)
-subprocess.call("mkdir -p " + output_folder + input_file, shell=True)
-subprocess.call("mv fort.* " + output_folder + input_file, shell=True)
-subprocess.call("mv " + input_file + ".out "
-                + output_folder + input_file, shell=True)
-"""
