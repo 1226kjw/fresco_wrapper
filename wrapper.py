@@ -3,6 +3,21 @@ from fractions import Fraction
 import subprocess
 import os
 
+COULOMB_POTENTIAL = 0
+CENTRAL_POTENTIAL_VOLUME = 1
+CENTRAL_POTENTIAL_DERIVATIVE = 2
+SPIN_ORBIT_PROJECTILE = 3
+SPIN_ORBIT_TARGET = 4
+TR_TENSOR_FORCE_PROJECTILE = 5
+TR_TENSOR_FORCE_TARGET = 6
+TENSOR_FORCE_COMBINED = 7
+SPIN_FORCE = 8
+DEFORMED_PROJECTILE = 10
+DEFORMED_TARGET = 11
+PROJECTILE_COUPLED = 12
+TARGET_COUPLED = 13
+L_L1_CENTRAL_POTENTIAL = 30
+
 def write_pt(f, data, pt: str):
     if pt == 'p':
         f.write("  namep='%8s'" % data['Name'][:8])
@@ -22,7 +37,8 @@ class Input:
             print("newline in comment!")
             exit(0)
         self.filename = filename
-        self.output = self.filename[:self.filename.find('.') if '.' in self.filename else None] + '.out'
+        self.new_dir = self.filename[:self.filename.rfind('.') if '.' in self.filename else None]
+        self.output = self.new_dir + '.out'
         self.comment = comment + '\n'
         self.parameters = {}
         self.projectile = []
@@ -71,7 +87,7 @@ class Input:
             f.write(' &FRESCO\n')
             for i in self.parameters:
                 if type(self.parameters[i]) is list:
-                    f.write('  %s=' % i)
+                    f.write('  %s(1:%d)=' % (i, len(self.parameters[i])))
                     for j in self.parameters[i]:
                         f.write('%g ' % j)
                     f.write('\n')
@@ -117,17 +133,15 @@ class Input:
             f.write(' &coupling /')
 
     def run(self):
-        new_dir = self.filename[:self.filename.find('.') if '.' in self.filename else None]
         try:
-            os.mkdir(new_dir)
+            os.mkdir(self.new_dir)
         except FileExistsError:
-            for i in os.listdir(new_dir):
-                os.remove('%s/%s' % (new_dir, i))
-        self.output = new_dir + '/' + self.output + '.out'
+            for i in os.listdir(self.new_dir):
+                os.remove('%s/%s' % (self.new_dir, i))
+        self.output = self.new_dir + '/' + self.output
         subprocess.call("fresco < %s > %s" % (self.filename, self.output), shell=True)
-        subprocess.call("mv fort.* %s" % new_dir, shell=True)
-        subprocess.call("mv %s %s" % (self.filename, self.output))
-
+        subprocess.call("mv fort.* %s" % self.new_dir, shell=True)
+        subprocess.call("mv %s %s" % (self.filename, self.new_dir), shell=True)
 
 
 def parsing_spin(j: str):
@@ -143,52 +157,6 @@ def parsing_spin(j: str):
     elif j != '':
         spins = list(map(lambda x: float(Fraction(x) if '/' in x else x), j.split(',')))
     return spins
-
-def get_custom():
-    custom = {'Name': input('Name: ')}
-    while not df[df['Name'] == custom['Name']].empty:
-        print('Duplicated Name!')
-        custom['Name'] = input('Name: ')
-    for i in ['a', 'z', 'i', 'Ex energy', 'Mass', 'PI', 'J']:
-        custom[i] = input(i + ': ')
-    custom['Mass'] = float(custom['Mass'])
-    if '-' in custom['PI']:
-        custom['PI'] = -1
-    else:
-        custom['PI'] = 1
-    if '/' in custom['J']:
-        custom['J'] = float(Fraction(custom['J']))
-    else:
-        custom['J'] = float(custom['J'])
-    df.append(custom, ignore_index=True)
-    return df[df['Name'] == custom['Name']]
-
-def get_particle(input_name):
-    input_num = ''.join([i for i in input_name if i.isdigit()])
-    input_alp = ''.join([i for i in input_name if i.isalpha()]).lower().title()
-    parsed_str = input_num + input_alp
-    if input_name == 'n' or (input_alp == 'N' and input_num == '1'):
-        parsed_str = '1 n'
-    return df[df['Name'] == parsed_str]
-
-def get_particle_set(comment: str):
-    particle_set = []
-    while True:
-        input_name = input('(input -1 to set custom particle or nothing to finish)\n' +
-                           comment + str(len(particle_set) + 1) + ': ')
-        if input_name == '':
-            break
-        elif input_name == '-1':
-            particle = get_custom()
-        else:
-            particle = get_particle(input_name)
-        if particle.empty:
-            print('There is no such particle in database:', input_name)
-            continue
-        particle_set.append(particle.index[0])
-        print(particle)
-        print(comment, list(map(lambda x: df.iloc[x]['Name'], particle_set)))
-    return particle_set
 
 
 # -------------------------------------------------  Data Clearing  -------------------------------------------------- #
@@ -212,8 +180,8 @@ df.drop(['_0', '_1', '_2', '_3', '_4', '_5', 'JPI', 'Mass excess', 'Mass excess 
 
 
 
-frin = Input('sample.frin', '11Be + 197Au')
-frin.set_parameters({
+fresco = Input('sample.frin', '11Be + 197Au')
+fresco.set_parameters({
     'hcm'       : 0.040,
     'rmatch'    : 50.000,
     'rintp'     : 0.24,
@@ -222,7 +190,7 @@ frin.set_parameters({
     'jtmin'     : 0.0,
     'jtmax'     : 1500.0,
     'absend'    : -0.0010,
-    'jump(1:6)' : [10, 20, 0, 0, 0, 0],
+    'jump'      : [10, 20, 0, 0, 0, 0],
     'jbord'     : [300.0, 1300.0, 0, 0, 0, 0],
     'thmin'     : 1.00,
     'thmax'     : 180.00,
@@ -233,13 +201,13 @@ frin.set_parameters({
     'smats'     : 2,
     'xstabl'    : 1,
     'nlpl'      : 0,
-    'elab(1)'   : 42,
+    'elab'   : 42,
 })
 
-frin.set_projectile("11Be")
-frin.set_target("197Au")
+fresco.set_projectile("11Be")
+fresco.set_target("197Au")
 
-frin.set_state({
+fresco.set_state({
     'jp'        : 0.5,
     'ptyp'      : 1,
     'ep'        : 0.0000,
@@ -248,7 +216,7 @@ frin.set_state({
     'ptyt'      : 1,
     'et'        : 0.0000,
 })
-frin.set_state({
+fresco.set_state({
     'jp'        : 0.5,
     'ptyp'      : -1,
     'ep'        : 0.3200,
@@ -256,14 +224,15 @@ frin.set_state({
     'copyt'     : 1,
 })
 
-frin.set_pot({
+
+fresco.set_pot({
     'kp'        : 1,
-    'type'      : 0,
+    'type'      : COULOMB_POTENTIAL,
     'p'         : [197.000, 11.0000, 0.0010],
 })
-frin.set_pot({
+fresco.set_pot({
     'kp'        : 1,
-    'type'      : 12,
+    'type'      : PROJECTILE_COUPLED,
     'p'         : [0.482, 0.0000, 0.0000]},
     step=[
     {
@@ -280,14 +249,14 @@ frin.set_pot({
     }]
 )
 
-frin.set_pot({
+fresco.set_pot({
     'kp'        : 1,
-    'type'      : 1,
+    'type'      : CENTRAL_POTENTIAL_VOLUME,
     'p'         : [40.000, 1.2290, 0.6120, 15.0000, 1.2290, 0.6120, 0.0000],
 })
-frin.set_pot({
+fresco.set_pot({
     'kp'        : 1,
-    'type'      : 12,
+    'type'      : PROJECTILE_COUPLED,
     'itt'       : 'F',
     'shape'     : 12,
     'p'         : [0.497, 0.0000, 0.0000]},
@@ -306,5 +275,5 @@ frin.set_pot({
     }]
 )
 
-frin.write_input()
-frin.run()
+fresco.write_input()
+fresco.run()
