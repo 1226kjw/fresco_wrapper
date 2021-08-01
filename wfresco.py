@@ -1,6 +1,10 @@
 import os
+import math
+import shlex
 import subprocess
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 from fractions import Fraction
 
 COULOMB_POTENTIAL = 0
@@ -68,10 +72,10 @@ class Input:
     def __init__(self, filename: str, comment: str):
         if '/' in filename:
             print("'/' in filename!")
-            exit(0)
+            exit(1)
         if '\n' in comment:
             print("newline in comment!")
-            exit(0)
+            exit(1)
         self.filename = filename
         self.new_dir = self.filename[:self.filename.rfind('.') if '.' in self.filename else None]
         self.output = self.new_dir + '.out'
@@ -82,9 +86,55 @@ class Input:
         self.states = []
         self.potentials = []
 
-    def set_parameters(self, par: dict):
-        for i in par:
-            self.parameters[i] = par[i]
+    def set_parameters(self, hcm=None, rmatch=None, rintp=None, rasym=None, accrcy=None, jtmin=None, jtmax=None,
+                       absend=None, jump=None, jbord=None, theta_range=None, ips=None,
+                       iblock=None, chans=None, smats=None, xstabl=None, nlpl=None, elab=None):
+        if hcm:
+            self.parameters['hcm'] = hcm
+        if rmatch:
+            self.parameters['rmatch'] = rmatch
+        if rintp:
+            self.parameters['rintp'] = rintp
+        if rasym:
+            self.parameters['rasym'] = rasym
+        if accrcy:
+            self.parameters['accrcy'] = accrcy
+        if jtmin:
+            self.parameters['jtmin'] = jtmin
+        if jtmax:
+            self.parameters['jtmax'] = jtmax
+        if absend:
+            self.parameters['absend'] = absend
+        if jump:
+            self.parameters['jump'] = jump
+        if jbord:
+            self.parameters['jbord'] = jbord
+        if theta_range:
+            if len(theta_range) == 2:
+                self.parameters['thmin'] = min(theta_range)
+                self.parameters['thmax'] = max(theta_range)
+                self.parameters['thinc'] = 1
+            elif len(theta_range) == 3 and theta_range[2] > 0:
+                self.parameters['thmin'] = theta_range[0]
+                self.parameters['thmax'] = theta_range[1]
+                self.parameters['thinc'] = theta_range[2]
+            else:
+                print('theta_range invalid')
+                exit(1)
+        if ips:
+            self.parameters['ips'] = ips
+        if iblock:
+            self.parameters['iblock'] = iblock
+        if chans:
+            self.parameters['chans'] = chans
+        if smats:
+            self.parameters['smats'] = smats
+        if xstabl:
+            self.parameters['xstabl'] = xstabl
+        if nlpl:
+            self.parameters['nlpl'] = nlpl
+        if elab:
+            self.parameters['elab'] = elab
 
     def set_projectile(self, name: str):
         input_num = ''.join([i for i in name if i.isdigit()])
@@ -94,6 +144,7 @@ class Input:
             parsed_str = '1 n'
         if df[df['Name'] == parsed_str].empty:
             print('Cannot find: ' + name)
+            exit(2)
         else:
             self.projectile.append(df[df['Name'] == parsed_str].index[0])
 
@@ -105,6 +156,7 @@ class Input:
             parsed_str = '1 n'
         if df[df['Name'] == parsed_str].empty:
             print('Cannot find: ' + name)
+            exit(2)
         else:
             self.target.append(df[df['Name'] == parsed_str].index[0])
 
@@ -178,3 +230,61 @@ class Input:
         subprocess.call("fresco < %s > %s" % (self.filename, self.output), shell=True)
         subprocess.call("mv fort.* %s" % self.new_dir, shell=True)
         subprocess.call("mv %s %s" % (self.filename, self.new_dir), shell=True)
+
+    def show(self, *fileno: tuple):
+        graph_len = len(fileno)
+        graph_len_sqrt = math.ceil(math.sqrt(graph_len))
+        g_row = 1
+        g_col = 1
+        while g_row * g_col < graph_len:
+            if g_col == g_row:
+                g_row += 1
+            else:
+                g_col += 1
+        plt.rcParams["figure.figsize"] = (6 * g_col, 5 * g_row)
+        for num, i in enumerate(fileno):
+            graphinput = self.new_dir + '/fort.' + str(i)
+            plt.subplot(g_row, g_col, num + 1)
+            with open(graphinput, 'r') as f:
+                d_x = []
+                d_y = []
+                l_string = ''
+                l_istrue = False
+                while True:
+                    line = shlex.split(f.readline())
+                    if not line:
+                        break
+                    if line[0][0] == '#':
+                        continue
+                    if line[0][0] == '@':
+                        cmd = line[0][1:].lower()
+                        if cmd == 'subtitle':
+                            plt.title(line[1])
+                        elif cmd == 'legend':
+                            if line[1].lower() == 'on':
+                                l_istrue = True
+                            elif line[1].lower() == 'string':
+                                l_string = line[3]
+                        elif cmd == 'g0':
+                            if line[1].lower() == 'type':
+                                if line[2].lower() == 'logy':
+                                    plt.yscale('log')
+                        elif cmd == 'xaxis':
+                            if line[1].lower() == 'label':
+                                plt.xlabel(line[2])
+                        elif cmd == 'yaxis':
+                            if line[1].lower() == 'label':
+                                plt.ylabel(line[2])
+                    elif line[0].lower() == 'end':
+                        plt.plot(d_x, d_y, label=l_string)
+                        plt.legend(loc=0)
+                        if l_istrue:
+                            plt.legend()
+                        #l_string = ''
+                        d_x = []
+                        d_y = []
+                    else:
+                        d_x.append(float(line[0]))
+                        d_y.append(float(line[1]))
+        plt.show()
+            #subprocess.call("xmgrace %s" % graphinput, shell=True)
