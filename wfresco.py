@@ -275,8 +275,8 @@ class Input:
                         elif cmd == 'yaxis':
                             if line[1].lower() == 'label':
                                 plt.ylabel(line[2])
-                    elif line[0].lower() == 'end':
-                        plt.plot(d_x, d_y, label=l_string)
+                    elif line[0].lower() == 'end' or line[0][0] == '&':
+                        plt.plot(d_x, d_y, '-o', label=l_string)
                         plt.legend(loc=0)
                         if l_istrue:
                             plt.legend()
@@ -286,5 +286,10 @@ class Input:
                     else:
                         d_x.append(float(line[0]))
                         d_y.append(float(line[1]))
+                if d_x and d_y:
+                    plt.plot(d_x, d_y, '-o', label=l_string)
+                    plt.legend(loc=0)
+                    #if l_istrue:
+                    #    plt.legend()
         plt.show()
             #subprocess.call("xmgrace %s" % graphinput, shell=True)

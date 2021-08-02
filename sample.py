@@ -25,6 +25,9 @@ fresco.set_parameters(
 fresco.set_projectile("11Be")
 fresco.set_target("197Au")
 
+
+#set_states(proj=["0.5+", 0], target=["1-",0.23], pot=1)
+
 fresco.set_state({
     'jp'        : 0.5,
     'ptyp'      : 1,
@@ -65,12 +68,17 @@ fresco.set_pot({
         'str'   : 0.4817
     }]
 )
-
 fresco.set_pot({
     'kp'        : 1,
     'type'      : wfresco.CENTRAL_POTENTIAL_VOLUME,
     'p'         : [40.000, 1.2290, 0.6120, 15.0000, 1.2290, 0.6120, 0.0000],
 })
+
+
+#fresco.set_pot(kp=1, CENTRAL_POTENTIAL_COLUME([40.0,...]))
+
+
+
 fresco.set_pot({
     'kp'        : 1,
     'type'      : wfresco.PROJECTILE_COUPLED,
@@ -95,4 +103,5 @@ fresco.set_pot({
 fresco.write_input()
 fresco.run()
 
-fresco.show(16,201)
+fresco.show(16)
+#fresco.show('Cross sections')
