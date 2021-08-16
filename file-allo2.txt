@@ -1,0 +1,70 @@
+File @ Format @ LRECL  @ Access @ Routines @ Use 
+ no. @ (Fix/Var) @ (bytes) @ (Seq/Ran) @  @  
+1    @  V @             @ S  @     SFRESCO@ FRESCO input when searching
+2    @  V @             @ S  @     SFRESCO@ Search specification file
+3    @  V @             @ S  @     FREADF, FR@ Temporary namelists file
+4    @  F @     80      @ S  @     INTER @ external KIND=1,2 form factors
+     @    @             @    @     POTENT @external potentials
+5    @  F @     80      @ S  @         @   standard input
+6    @  V @    142      @ S  @          @  standard output
+7    @  F @     80      @ S  @     DISPX @ elastic S-matrix elements
+8 @  F @   sector    @ R  @     FR,INTER @ s/p wfs, channel wfs
+9 @  F @  NLL*NLO*16    @ R@ Q/KERNEL @  complex transfer multipoles
+10 @  V @             @ S  @     FR,CRISS @ S-matrix elements (cfs)
+11 @  F @ NLL*NLO*8 @  R @ Q/KERNEL @  real transfer multipole
+12 @  V @NLL*NLO*16 @ S  @   KERNEL/SOURCE@transfer kernels
+13    @  F @    80      @ S  @      FR   @    total cross sections for each Elab
+14  @ V @             @ S  @   INTER/CPAIR @interaction potentials
+16    @  F @     80      @ S  @       CRISS @  tables of cross sections
+17    @  F @     80      @ S  @       FR  @    output scattering waves
+18 @  V @             @ S  @       FR  @    wfns of 'best' iterate
+19    @  F @    N      @ S  @     FR  @   Local couplings
+34    @  F @    80      @ S  @     POTENT @   output potentials
+35    @  F @    80      @ S  @     FR @ Astrophysical S-factors for Ecm
+36    @    @            @    @     CRISS @ output scattering AMPL amplitudes
+37    @    @            @    @     CRISS @ output scattering FAM amplitudes
+38    @  F @    80      @ S  @     DISPX @    cross sections for each J/pi
+39    @  F @    80      @ S  @      FR   @    2 cross sections for each Elab
+40    @  F @    80      @ S  @      FR   @    all cross sections for each Elab
+41    @  F @    80      @ S  @     SOURCE @   source terms at each iteration
+42    @  F @    80      @ S  @     SOURCE @   bin wavefunctions for each E
+43    @  F @    80      @ S  @     INFORM @   bin phase shifts as k functions
+44    @  F @    80      @ S  @     INFORM @   bin phase shifts as E functions
+45    @  F @    80      @ S  @     ERWIN   @  scat phase shift as E functions
+46    @  F @    80      @ S  @     INFORM @   bs wave functions & Whit ratios
+47    @  F @    80      @ S  @            @   reduced matrix elements 
+48    @ V @   133      @ S  @       FR  @ misc log file
+55    @   F @            @    @     INFORM @ Single-particle wave functions
+56    @   F @            @    @     FR @ Jtotal fusion & reaction cross
+57    @   F @            @    @     FR @ Output of CDCC amplitudes
+58    @   F @            @    @     INFORM @ Bound state wave functions 
+59    @   F @            @    @     INFORM @ Bound state vertex functions 
+60    @   F @            @    @     RMATRIX @ Trace of R-matrix calculations
+61    @   F @            @    @     RMATRIX @ Trace of R-matrix calculations
+62    @   F @            @    @     RMATRIX @ Trace of R-matrix calculations
+66    @  V  @NLL*NLO*16  @ S  @     INTER @ KIND=1 nonlocal formfactor
+71    @   F @    132     @ S  @     FR   @  20 pw phase shifts as Elab functions
+75    @  F @            @ S  @     FR @ Astrophysical S-factors for Elab
+89    @   F @            @    @     MULTIP@ Folded coupling potentials
+105     @ V @         @ S  @     FCN   @  $\chi^2$ progress during fitting
+200 @ F @ 80     @ S  @     CRISS   @ Elastic cross section if not fort.201 
+201 @ F @ 80     @ S  @     CRISS   @ Cross sections (cf 14) for states 1
+202 @ F @ 80     @ S  @     CRISS   @ Cross sections (cf 14) for states 2
+203 @ F @ 80     @ S  @     CRISS   @ Cross sections (cf 14) for states 3
+204 @ F @ 80     @ S  @     CRISS   @ Cross sections (cf 14) for states 4
+205 @ F @ 80     @ S  @     CRISS   @ Cross sections (cf 14) for states 5
+206 @ F @ 80     @ S  @     CRISS   @ Cross sections (cf 14) for states 6
+207 @ F @ 80     @ S  @     CRISS   @ Cross sections (cf 14) for states 7
+208 @ F @ 80     @ S  @     CRISS   @ Cross sections (cf 14) for states 8
+209 @ F @ 80     @ S  @     CRISS   @ Cross sections (cf 14) for states 9
+210 @ F @ 80     @ S  @     CRISS   @ Cross sections (cf 14) for states 10
+301 @ V @      @ S  @     CDCIN   @ New Fresco input 
+302 @ V @      @ S  @     CDCIN   @ New Fresco input  (temp) 
+303 @ V @      @ S  @     SFRESCO   @ Input search file 
+304 @ V @      @ S  @     SFRESCO   @ Output plot file 
+305 @ V @      @ S  @     CDCIN   @ New Fresco input from cdcin, col format 
+306 @ V @      @ S  @     SFRESCO/FRXX0   @ Input Fresco file 
+307 @ V @      @ S  @     SFRESCO/FRXX0   @ Initial Output Fresco file 
+308 @ V @      @ S  @     SFRESCO/FRXX0   @ Main Output Fresco file 
+
+20--33@    @            @    @     Available for users @ (eg bound states, amplitudes)

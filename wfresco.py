@@ -22,52 +22,6 @@ PROJECTILE_COUPLED = 12
 TARGET_COUPLED = 13
 L_L1_CENTRAL_POTENTIAL = 30
 
-def parsing_spin(j: str):
-	j = ''.join(i for i in j if i not in '()#-+*T=<>.' and not i.islower())
-	j = j[:j.find(' ')] if j.find(' ') != -1 else j
-	spins = []
-	if ':' in j:
-		start = float(Fraction(j[:j.find(':')]))
-		end = float(Fraction(j[j.find(':') + 1:]))
-		while start <= end:
-			spins.append(start)
-			start += 1
-	elif j != '':
-		spins = list(map(lambda x: float(Fraction(x) if '/' in x else x), j.split(',')))
-	return spins
-
-
-# -------------------------------------------------  Data Clearing  -------------------------------------------------- #
-# a,z,i,_0,Name,Mass excess,Mass excess err,Ex energy,Ex energy err,flag,Half-life,Unit,_1,JPI,_2,_3,_4,_5
-name_list   = [
-	'a', 'z', 'i', '_0', 'Name', 'Mass excess', 'Mass excess err',
-	'Ex energy', 'Ex energy err', 'flag', 'Half-life', 'Unit',
-	'_1', 'JPI', '_2', '_3', '_4', '_5'
-]
-type_list   = {i: str for i in name_list}
-df = pd.read_csv('nubase2016.csv', names=name_list, dtype=type_list, keep_default_na=False)
-pd.set_option('display.max_columns', None)
-df['a']     = df['a'].apply(int)
-df['z']     = df['z'].apply(int)
-df['Mass']  = df['a'] + df['Mass excess'].apply(lambda x: float(x.strip('#')) / 931494.013 if x != '' else 0)
-df['PI']    = df['JPI'].apply(lambda x: -1 if '-' in x else 1)
-df['J']     = df['JPI'].apply(parsing_spin)
-df.drop(['_0', '_1', '_2', '_3', '_4', '_5', 'JPI', 'Mass excess', 'Mass excess err', 'flag', 'Half-life', 'Unit'],
-		axis=1, inplace=True)
-# a, z, i, Name, Ex energy, Ex energy err, flag, Half-life, Unit, Mass, PI, J: list
-
-
-def write_pt(f, data, pt: str):
-	if pt == 'p':
-		f.write("  namep='%8s'" % data['Name'][:8])
-		f.write("  massp=%8.4f" % data['Mass'])
-		f.write("  zp=%3d\n" % data['z'])
-	else:
-		f.write("  namet='%8s'" % data['Name'][:8])
-		f.write("  masst=%8.4f" % data['Mass'])
-		f.write("  zt=%3d\n" % data['z'])
-
-
 class Input:
 	def __init__(self, filename: str, comment: str):
 		if '/' in filename:
@@ -80,26 +34,67 @@ class Input:
 		self.new_dir = self.filename[:self.filename.rfind('.') if '.' in self.filename else None]
 		self.output = self.new_dir + '.out'
 		self.comment = comment + '\n'
+		self.partition = {}
 		self.parameters = {}
 		self.projectile = []
 		self.target = []
 		self.states = []
 		self.potentials = []
+		def parsing_spin(j: str):
+			j = ''.join(i for i in j if i not in '()#-+*T=<>.' and not i.islower())
+			j = j[:j.find(' ')] if j.find(' ') != -1 else j
+			spins = []
+			if ':' in j:
+				start = float(Fraction(j[:j.find(':')]))
+				end = float(Fraction(j[j.find(':') + 1:]))
+				while start <= end:
+					spins.append(start)
+					start += 1
+			elif j != '':
+				spins = list(map(lambda x: float(Fraction(x) if '/' in x else x), j.split(',')))
+			return spins
+		name_list   = [
+			'a', 'z', 'i', '_0', 'Name', 'Mass excess', 'Mass excess err',
+			'Ex energy', 'Ex energy err', 'flag', 'Half-life', 'Unit',
+			'_1', 'JPI', '_2', '_3', '_4', '_5'
+		]
+		type_list   = {i: str for i in name_list}
+		self.df = pd.read_csv('nubase2016.csv', names=name_list, dtype=type_list, keep_default_na=False)
+		pd.set_option('display.max_columns', None)
+		self.df['a']     = self.df['a'].apply(int)
+		self.df['z']     = self.df['z'].apply(int)
+		self.df['Mass']  = self.df['a'] + self.df['Mass excess'].apply(lambda x: float(x.strip('#')) / 931494.013 if x != '' else 0)
+		self.df['PI']    = self.df['JPI'].apply(lambda x: -1 if '-' in x else 1)
+		self.df['J']     = self.df['JPI'].apply(parsing_spin)
+		self.df.drop(['_0', '_1', '_2', '_3', '_4', '_5', 'JPI', 'Mass excess', 'Mass excess err', 'flag', 'Half-life', 'Unit'],
+				axis=1, inplace=True)
 
-	def set_parameters(self, hcm=None, rmatch=None, rintp=None, rasym=None, accrcy=None, jtmin=None, jtmax=None,
-					   absend=None, jump=None, jbord=None, theta_range=None, ips=None,
-					   iblock=None, chans=None, smats=None, xstabl=None, nlpl=None, elab=None):
+	def set_parameters(self, hcm=None, rmatch=None, rintp=None, hnl=None, rnl=None, centre=None, 
+					   rasym=None, accrcy=None, switch=None, ajswtch=None,
+					   jtmin=None, jtmax=None, absend=None, jump=None, jbord=None,
+					   kqmax=None, pp=None, theta_range=None, koords=None, cut=None, cutr=None, cutc=None,
+					   ips=None, iblock=None, chans=None, smats=None, xstabl=None, nlpl=None, elab=None):
 		if hcm:
 			self.parameters['hcm'] = hcm
 		if rmatch:
 			self.parameters['rmatch'] = rmatch
 		if rintp:
 			self.parameters['rintp'] = rintp
+		if hnl:
+			self.parameters['hnl'] = hnl
+		if rnl:
+			self.parameters['rnl'] = rnl
+		if centre:
+			self.parameters['centre'] = centre
 		if rasym:
 			self.parameters['rasym'] = rasym
 		if accrcy:
 			self.parameters['accrcy'] = accrcy
-		if jtmin:
+		if switch:
+			self.parameters['switch'] = switch
+		if ajswtch:
+			self.parameters['ajswtch'] = ajswtch
+		if jtmin != None:
 			self.parameters['jtmin'] = jtmin
 		if jtmax:
 			self.parameters['jtmax'] = jtmax
@@ -109,6 +104,10 @@ class Input:
 			self.parameters['jump'] = jump
 		if jbord:
 			self.parameters['jbord'] = jbord
+		if kqmax:
+			self.parameters['kqmax'] = kqmax
+		if pp:
+			self.parameters['pp'] = pp
 		if theta_range:
 			if len(theta_range) == 2:
 				self.parameters['thmin'] = min(theta_range)
@@ -121,6 +120,14 @@ class Input:
 			else:
 				print('theta_range invalid')
 				exit(1)
+		if koords:
+			self.parameters['koords'] = koords
+		if cut:
+			self.parameters['cut'] = cut
+		if cutr:
+			self.parameters['cutr'] = cutr
+		if cutc:
+			self.parameters['cutc'] = cutc
 		if ips:
 			self.parameters['ips'] = ips
 		if iblock:
@@ -136,29 +143,64 @@ class Input:
 		if elab:
 			self.parameters['elab'] = elab
 
-	def set_projectile(self, name: str):
+	def set_projectile(self, name: str, mass=None, z=None):
 		input_num = ''.join([i for i in name if i.isdigit()])
 		input_alp = ''.join([i for i in name if i.isalpha()]).lower().title()
 		parsed_str = input_num + input_alp
+		particle = {}
 		if name == 'n' or (input_alp == 'N' and input_num == '1'):
 			parsed_str = '1 n'
-		if df[df['Name'] == parsed_str].empty:
-			print('Cannot find: ' + name)
-			exit(2)
+		search = self.df[self.df['Name'] == parsed_str]
+		if search.empty:
+			if not mass or not z:
+				print('Cannot find: ' + name)
+				exit(2)
 		else:
-			self.projectile.append(df[df['Name'] == parsed_str].index[0])
+			particle = self.df.iloc[search.index[0]].copy()
+		particle['Name'] = name
+		if mass:
+			particle['Mass'] = mass
+		if z:
+			particle['z'] = z
+		self.projectile.append(particle)
 
-	def set_target(self, name: str):
+	def set_target(self, name: str, mass=None, z=None):
 		input_num = ''.join([i for i in name if i.isdigit()])
 		input_alp = ''.join([i for i in name if i.isalpha()]).lower().title()
 		parsed_str = input_num + input_alp
+		particle = {}
 		if name == 'n' or (input_alp == 'N' and input_num == '1'):
 			parsed_str = '1 n'
-		if df[df['Name'] == parsed_str].empty:
-			print('Cannot find: ' + name)
-			exit(2)
+		search = self.df[self.df['Name'] == parsed_str]
+		if search.empty:
+			if not mass or not z:
+				print('Cannot find: ' + name)
+				exit(2)
 		else:
-			self.target.append(df[df['Name'] == parsed_str].index[0])
+			particle = self.df.iloc[search.index[0]].copy()
+		particle['Name'] = name
+		if mass:
+			particle['Mass'] = mass
+		if z:
+			particle['z'] = z
+		self.target.append(particle)
+
+	def set_partition(self, qval=None, nex=None, pwf=None):
+		self.partition['qval'] = qval
+		self.partition['nex'] = nex
+		self.partition['pwf'] = pwf
+
+	# def set_target(self, name: str):
+	# 	input_num = ''.join([i for i in name if i.isdigit()])
+	# 	input_alp = ''.join([i for i in name if i.isalpha()]).lower().title()
+	# 	parsed_str = input_num + input_alp
+	# 	if name == 'n' or (input_alp == 'N' and input_num == '1'):
+	# 		parsed_str = '1 n'
+	# 	if self.df[self.df['Name'] == parsed_str].empty:
+	# 		print('Cannot find: ' + name)
+	# 		exit(2)
+	# 	else:
+	# 		self.target.append(self.df[self.df['Name'] == parsed_str].index[0])
 
 	def set_state(self, proj=None, target=None, cpot=1):
 		if (type(proj) != int and len(proj) != 2) or (type(target) != int and len(target) != 2):
@@ -185,13 +227,24 @@ class Input:
 			print('kp in set_pot is invalid')
 			exit(1)
 		for i in pots:
-			if not (0 <= i['type'] <= 13 or i['type'] == 30) or i['type'] == 9:
+			if 'type' in i and (not (0 <= i['type'] <= 13 or i['type'] == 30) or i['type'] == 9):
 				print('potential type invalid')
 				exit(1)
 			i['kp'] = kp
+			if 'step' in i and i['step'][-1]['ib'] > 0:
+				i['step'][-1]['ib'] *= -1
 			self.potentials.append(i)
 
 	def write_input(self):
+		def write_pt(f, data, pt: str):
+			if pt == 'p':
+				f.write("  namep='%8s'" % data['Name'][:8])
+				f.write("  massp=%8.4f" % data['Mass'])
+				f.write("  zp=%3d\n" % data['z'])
+			elif pt == 't':
+				f.write("  namet='%8s'" % data['Name'][:8])
+				f.write("  masst=%8.4f" % data['Mass'])
+				f.write("  zt=%3d\n" % data['z'])
 		with open(self.filename, 'w') as f:
 			f.write(self.comment)
 			f.write('NAMELIST\n')
@@ -208,11 +261,15 @@ class Input:
 
 			f.write(' &PARTITION\n')
 			for i in self.projectile:
-				write_pt(f, df.iloc[i], 'p')
-			f.write('  nex=2  pwf=T\n')
+				write_pt(f, i, 'p')
 			for i in self.target:
-				write_pt(f, df.iloc[i], 't')
-			f.write('  qval=0.0000 /\n')
+				write_pt(f, i, 't')
+			part = '  '
+			for i in self.partition:
+				part += i + '=' + str(self.partition[i])
+				part += ' '
+			part += '/\n'
+			f.write(part)
 
 			for i in self.states:
 				f.write('   &STATES ')
@@ -254,6 +311,39 @@ class Input:
 		subprocess.call("mv fort.* %s" % self.new_dir, shell=True)
 		subprocess.call("mv %s %s" % (self.filename, self.new_dir), shell=True)
 
+	def ls(self, *filenum):
+		fileinfo = {}
+		with open('file-allo2.txt', 'r') as f:
+			while True:
+				line = f.readline()
+				if not line:
+					break
+				line = [i.strip() for i in line.split('@')]
+				if line[0].isdigit():
+					if line[1] == 'F':
+						line[1] = 'Fix'
+					if line[1] == 'V':
+						line[1] = 'Var'
+					if line[3] == 'S':
+						line[3] = 'Seq'
+					if line[3] == 'R':
+						line[3] = 'Ran'
+					fileinfo[int(line[0])] = line[1:]
+				else:
+					fileinfo[line[0]] = line[1:]
+		if len(filenum) == 0:
+			for i in fileinfo:
+				if type(i) == int:
+					print("fort.%-3d  %s" % (i, fileinfo[i][4]))
+		else:
+			for i in filenum:
+				info = fileinfo[i]
+				column = fileinfo['File']
+				print('%10s : %10s' %('File', 'fort.'+str(i)))
+				for j in range(5):
+					print('%10s : %10s' % (column[j], info[j]))
+
+
 	def show(self, *fileno: tuple):
 		graph_len = len(fileno)
 		graph_len_sqrt = math.ceil(math.sqrt(graph_len))
@@ -266,7 +356,12 @@ class Input:
 				g_col += 1
 		plt.rcParams["figure.figsize"] = (6 * g_col, 5 * g_row)
 		for num, i in enumerate(fileno):
-			graphinput = self.new_dir + '/fort.' + str(i)
+			if type(i) == int:
+				graphinput = self.new_dir + '/fort.' + str(i)
+			else:
+				print('Non numeric characters in wfresco.show()')
+				exit(1)
+			print('Graph', num+1, ':', graphinput)
 			plt.subplot(g_row, g_col, num + 1)
 			with open(graphinput, 'r') as f:
 				d_x = []
