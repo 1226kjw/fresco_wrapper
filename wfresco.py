@@ -22,7 +22,7 @@ PROJECTILE_COUPLED = 12
 TARGET_COUPLED = 13
 L_L1_CENTRAL_POTENTIAL = 30
 
-class Input:
+class Wfresco:
 	def __init__(self, filename: str, comment: str):
 		if '/' in filename:
 			print("'/' in filename!")
@@ -33,7 +33,7 @@ class Input:
 		self.filename = filename
 		self.new_dir = self.filename[:self.filename.rfind('.') if '.' in self.filename else None]
 		self.output = self.new_dir + '.out'
-		self.comment = comment + '\n'
+		self.comment = comment[:119] + '\n'
 		self.partition = {}
 		self.parameters = {}
 		self.projectile = []
@@ -346,7 +346,6 @@ class Input:
 
 	def show(self, *fileno: tuple):
 		graph_len = len(fileno)
-		graph_len_sqrt = math.ceil(math.sqrt(graph_len))
 		g_row = 1
 		g_col = 1
 		while g_row * g_col < graph_len:
