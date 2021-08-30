@@ -23,9 +23,9 @@ fresco.set_parameters(
 	elab        = 42,
 )
 
+fresco.set_partition(qval=0.000, pwf='T', nex=2)
 fresco.set_projectile('11BE')
 fresco.set_target('197Au')
-fresco.set_partition(qval=0.000, pwf='T', nex=2)
 
 fresco.set_state(proj=["0.5+", 0], target=["0.0+",0.0], cpot=1)
 fresco.set_state(proj=["0.5-", 0.3200], target=1, cpot=1)
@@ -43,6 +43,6 @@ fresco.run()
 
 #table = fresco.get_table(16)
 
-#fresco.ls()
-#fresco.ls(16)
+fresco.ls()
+fresco.ls(16)
 #fresco.show(16)
