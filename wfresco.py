@@ -28,12 +28,8 @@ if __name__ == '__main__': #실행시 frin파일을 input으로 받아 .py로 �
                 if line.strip().upper() == 'NAMELIST':
                     fpy.write("fresco = Wfresco('filename.frin', 'comment')\n")
                 else:
-                    if line.count('&') >= 2:
-                        print('Parse error')
-                        fpy.close()
-                        exit(1)
                     line = line.strip()
-                    if '&' in line:
+                    if line and '&' == line[0]:
                         line = line.replace('&', 'fresco.')
                         while '/' not in line:
                             line += ' ' + f.readline().strip()
@@ -54,15 +50,19 @@ if __name__ == '__main__': #실행시 frin파일을 input으로 받아 .py로 �
                                 del(parsing_list[pi])
                             elif '\'' not in parsing_list[pi] and ' ' in parsing_list[pi]:
                                 parsing_list[pi] = parsing_list[pi].replace('=', '=[') + ']'
-                        line = line[:i] + re.sub(r"('[^']*')|[a-zA-Z]+=", lambda x: x.group().upper() if '\'' not in x.group() else x.group(), ' '.join(parsing_list)) + line[j:]
+                        line = line[:i] + re.sub(r"('[^']*')|([a-zA-Z][a-zA-Z0-9]*=)", lambda x: x.group().upper() if '\'' not in x.group() else x.group(), ' '.join(parsing_list)) + line[j:]
                         #등호 이전 키워드 대문자로 변경
                         line = re.sub(r"('[^']*')| +", lambda x: x.group() if x.group()[0] in '"\'' else ', ', line[:line.find('#') if '#' in line else None]) + (line[line.find('#'):] if '#' in line else '')
                         line = line.replace(', #', ' #', 1)
                         line = re.sub(r"=([TF])", lambda x: '=\'' + x.group(1) + '\'', line)
                         if '()' not in line[:line.find('#') if '#' in line else None]:
                             fpy.write(line + '\n')
-                    else:
+                    elif line and '!' == line[0]:
                         line = line.replace('!', '#')
+                        fpy.write(line + '\n')
+                    elif line:
+                        fpy.write('#' + line + '\n')
+                    else:
                         fpy.write(line + '\n')
             fpy.close()
 
@@ -99,6 +99,8 @@ else:
             self.target = []
             self.states = []
             self.potentials = []
+            self.overlap = []
+            self.coupling = []
             self.df = None
             self.fileinfo = None
 
@@ -293,6 +295,20 @@ else:
                     i['step'][-1]['ib'] *= -1
                 self.potentials.append(i)
 
+        def set_overlap(self, kn1=None, kn2=None, ic1=None, ic2=None, _in=None, kind=None, ch1=None, nn=None, l=None, lmax=None, sn=None, 
+                        ia=None, j=None, ib=None, kbpot=None, krpot=None, be=None, isc=None, ipc=None, nfl=None, nam=None, 
+                        ampl=None):
+            over = {'kn1':kn1, 'kn2':kn2, 'ic1':ic1, 'ic2':ic2, 'in':_in, 'kind':kind, 'ch1':ch1, 'nn':nn, 'l':l, 'lmax':lmax, 'sn':sn,
+                    'ia':ia, 'j':j, 'ib':ib, 'kbpot':kbpot, 'krpot':krpot, 'be':be, 'isc':isc, 'ipc':ipc, 'nfl':nfl, 'nam':nam,
+                    'ampl':ampl}
+            self.overlap.append(over)
+
+        def set_coupling(self, icto=None, icfrom=None, kind=None, ip1=None, ip2=None, ip3=None, p1=None, p2=None, jmax=None, rmax=None,
+                        kfrag=None, kcore=None, ):
+            coup = {'icto':icto, 'icfrom':icfrom, 'kind':kind, 'ip1':ip1, 'ip2':ip2, 'ip3':ip3, 'p1':p1, 'p2':p2, 'jmax':jmax, 'rmax':rmax,
+                    'kfrag':kfrag, 'kcore':kcore}
+            self.coupling.append(coup)
+
         def __write_parameters(self, f):
             f.write(' &FRESCO\n')
             for i in self.parameters:
@@ -335,17 +351,18 @@ else:
 
         def __write_potential(self, f):
             for i in self.potentials:
-                f.write(' &pot')
+                f.write(' &POT')
                 for j in i:
-                    if j != 'step':
-                        if type(i[j]) is not list:
-                            f.write(' %s=%3s' % (j, i[j]))
-                        else:
-                            f.write(' %s(1:%d)=' % (j, len(i[j])))
-                            for k in i[j]:
-                                f.write(' %s' % k)
+                    if i[j] is None or j == 'step':
+                        continue
+                    if type(i[j]) is not list:
+                        f.write(' %s=%3s' % (j, i[j]))
+                    else:
+                        f.write(' %s(1:%d)=' % (j, len(i[j])))
+                        for k in i[j]:
+                            f.write(' %s' % k)
                 f.write(' /\n')
-                if 'step' in i:
+                if 'step' in i and i['step'] is not None:
                     for j in i['step']:
                         f.write('  &step')
                         for k in j:
@@ -353,17 +370,51 @@ else:
                         f.write(' /\n')
             f.write(' &pot /\n\n')
 
+        def __write_overlap(self, f):
+            for i in self.overlap:
+                f.write(' &OVERLAP')
+                for j in i:
+                    if i[j] is None:
+                        continue
+                    if type(i[j]) is not list:
+                        f.write(' %s=%3s' % (j, i[j]))
+                    else:
+                        f.write(' %s(1:%d)=' % (j, len(i[j])))
+                        for k in i[j]:
+                            f.write(' %s' % k)
+                f.write(' /\n')
+            f.write(' &overlap /\n\n')
+
+        def __write_coupling(self, f):
+            for i in self.coupling:
+                f.write(' &COUPLING')
+                for j in i:
+                    if i[j] is None or j == 'cfp':
+                        continue
+                    if type(i[j]) is not list:
+                        f.write(' %s=%3s' % (j, i[j]))
+                    else:
+                        f.write(' %s(1:%d)=' % (j, len(i[j])))
+                        for k in i[j]:
+                            f.write(' %s' % k)
+                f.write(' /\n')
+                if 'cfp' in i and i['cfp'] is not None:
+                    for j in i['cfp']:
+                        f.write('  &cfp')
+                        for k in j:
+                            f.write(' %s=%3g' % (k, j[k]))
+                        f.write(' /\n')
+            f.write(' &coupling /\n\n')
+
         def write_input(self):
             with open(self.filename, 'w') as f:
                 f.write(self.comment)
                 f.write('NAMELIST\n')
-
                 self.__write_parameters(f)
                 self.__write_partition(f)
                 self.__write_potential(f)
-
-                f.write(' &overlap /\n\n')
-                f.write(' &coupling /')
+                self.__write_overlap(f)
+                self.__write_coupling(f)
 
         def run(self):
             try:

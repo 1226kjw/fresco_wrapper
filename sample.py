@@ -24,7 +24,7 @@ f.set_parameters(
 )
 
 f.set_partition(qval=0.000, pwf='T', nex=2)
-f.set_projectile('11BE')
+f.set_projectile('11Be')
 f.set_target('197Au')
 
 f.set_state(proj=["0.5+", 0], target=["0.0+",0.0], cpot=1)
@@ -44,12 +44,11 @@ f.run()
 #table = fresco.get_table(16)
 
 f.ls()
-f.ls(16)
-#f.show(16)
-table = f.get_table(16)
-for i in table:
-    print(i)
-    for j in table[i]:
-        print(j)
+#f.ls(16)
+#table = f.get_table(16)
+# for i in table:
+#     print(i)
+#     for j in table[i]:
+#         print(j)
 
 f.show(16)
