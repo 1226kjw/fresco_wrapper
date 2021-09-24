@@ -1,7 +1,9 @@
+from io import RawIOBase
 import sys
 import os
 import shlex
 import subprocess
+from numpy import rint
 import pandas as pd
 import matplotlib.pyplot as plt
 import re
@@ -93,11 +95,10 @@ else:
             self.new_dir = self.filename[:self.filename.rfind('.') if '.' in self.filename else None]
             self.output = self.new_dir + '.out'
             self.comment = comment[:119] + '\n'
-            self.partition = {}
+            self.partition = []
             self.parameters = {}
             self.projectile = []
             self.target = []
-            self.states = []
             self.potentials = []
             self.overlap = []
             self.coupling = []
@@ -141,40 +142,10 @@ else:
                         jtmin=None, jtmax=None, absend=None, jump=None, jbord=None,
                         kqmax=None, pp=None, theta_range=None, koords=None, cut=None, cutr=None, cutc=None,
                         ips=None, iblock=None, chans=None, smats=None, xstabl=None, nlpl=None, elab=None):
-            if hcm is not None:
-                self.parameters['hcm'] = hcm
-            if rmatch is not None:
-                self.parameters['rmatch'] = rmatch
-            if rintp is not None:
-                self.parameters['rintp'] = rintp
-            if hnl is not None:
-                self.parameters['hnl'] = hnl
-            if rnl is not None:
-                self.parameters['rnl'] = rnl
-            if centre is not None:
-                self.parameters['centre'] = centre
-            if rasym is not None:
-                self.parameters['rasym'] = rasym
-            if accrcy is not None:
-                self.parameters['accrcy'] = accrcy
-            if switch is not None:
-                self.parameters['switch'] = switch
-            if ajswtch is not None:
-                self.parameters['ajswtch'] = ajswtch
-            if jtmin is not None:
-                self.parameters['jtmin'] = jtmin
-            if jtmax is not None:
-                self.parameters['jtmax'] = jtmax
-            if absend is not None:
-                self.parameters['absend'] = absend
-            if jump is not None:
-                self.parameters['jump'] = jump
-            if jbord is not None:
-                self.parameters['jbord'] = jbord
-            if kqmax is not None:
-                self.parameters['kqmax'] = kqmax
-            if pp is not None:
-                self.parameters['pp'] = pp
+            params = {'hcm':hcm, 'rmatch':rmatch, 'rintp':rintp, 'hnl':hnl, 'rnl':rnl, 'centre':centre, 'rasym':rasym,
+                        'accrcy':accrcy, 'switch':switch, 'ajswtch':ajswtch, 'jtmin':jtmin, 'jtmax':jtmax, 'absend':absend,
+                        'jump':jump, 'jbord':jbord, 'kqmax':kqmax, 'pp':pp, koords:koords, cut:cut, cutr:cutr, cutc:cutc,
+                        'ips':ips, 'iblock':iblock, 'chans':chans, 'smats':smats, 'xstabl':xstabl, 'nlpl':nlpl, 'elab':elab}
             if theta_range is not None:
                 if len(theta_range) == 2:
                     self.parameters['thmin'] = min(theta_range)
@@ -187,100 +158,156 @@ else:
                 else:
                     print('theta_range invalid')
                     exit(1)
-            if koords is not None:
-                self.parameters['koords'] = koords
-            if cut is not None:
-                self.parameters['cut'] = cut
-            if cutr is not None:
-                self.parameters['cutr'] = cutr
-            if cutc is not None:
-                self.parameters['cutc'] = cutc
-            if ips is not None:
-                self.parameters['ips'] = ips
-            if iblock is not None:
-                self.parameters['iblock'] = iblock
-            if chans is not None:
-                self.parameters['chans'] = chans
-            if smats is not None:
-                self.parameters['smats'] = smats
-            if xstabl is not None:
-                self.parameters['xstabl'] = xstabl
-            if nlpl is not None:
-                self.parameters['nlpl'] = nlpl
-            if elab is not None:
-                self.parameters['elab'] = elab
+            for i in params:
+                if params[i] is not None:
+                    self.parameters[i] = params[i]
 
-        def set_projectile(self, name: str, mass=None, z=None):
-            self.parse_nubase()
-            input_num = ''.join([i for i in name if i.isdigit()])
-            input_alp = ''.join([i for i in name if i.isalpha()]).lower().title()
-            parsed_str = input_num + input_alp
-            particle = {}
-            if name == 'n' or (input_alp == 'N' and input_num == '1'):
-                parsed_str = '1 n'
-            search = self.df[self.df['Name'] == parsed_str]
-            if search.empty:
-                if not mass or not z:
-                    print('Cannot find: ' + name)
-                    exit(1)
-            else:
-                particle = self.df.iloc[search.index[0]].copy()
-            particle['Name'] = name
-            if mass is not None:
-                particle['Mass'] = mass
-            if z is not None:
-                particle['z'] = z
-            self.projectile.append(particle)
+        # def set_projectile(self, name: str, mass=None, z=None):
+        #     self.parse_nubase()
+        #     input_num = ''.join([i for i in name if i.isdigit()])
+        #     input_alp = ''.join([i for i in name if i.isalpha()]).lower().title()
+        #     parsed_str = input_num + input_alp
+        #     particle = {}
+        #     if name == 'n' or (input_alp == 'N' and input_num == '1'):
+        #         parsed_str = '1 n'
+        #     search = self.df[self.df['Name'] == parsed_str]
+        #     if search.empty:
+        #         if not mass or not z:
+        #             print('Cannot find: ' + name)
+        #             exit(1)
+        #     else:
+        #         particle = self.df.iloc[search.index[0]].copy()
+        #     particle['Name'] = name
+        #     if mass is not None:
+        #         particle['Mass'] = mass
+        #     if z is not None:
+        #         particle['z'] = z
+        #     self.projectile.append(particle)
 
-        def set_target(self, name: str, mass=None, z=None):
-            self.parse_nubase()
-            input_num = ''.join([i for i in name if i.isdigit()])
-            input_alp = ''.join([i for i in name if i.isalpha()]).lower().title()
-            parsed_str = input_num + input_alp
-            particle = {}
-            if name == 'n' or (input_alp == 'N' and input_num == '1'):
-                parsed_str = '1 n'
-            search = self.df[self.df['Name'] == parsed_str]
-            if search.empty:
-                if not mass or not z:
-                    print('Cannot find: ' + name)
-                    exit(1)
-            else:
-                particle = self.df.iloc[search.index[0]].copy()
-            particle['Name'] = name
-            if mass is not None:
-                particle['Mass'] = mass
-            if z is not None:
-                particle['z'] = z
-            self.target.append(particle)
+        # def set_target(self, name: str, mass=None, z=None):
+        #     self.parse_nubase()
+        #     input_num = ''.join([i for i in name if i.isdigit()])
+        #     input_alp = ''.join([i for i in name if i.isalpha()]).lower().title()
+        #     parsed_str = input_num + input_alp
+        #     particle = {}
+        #     if name == 'n' or (input_alp == 'N' and input_num == '1'):
+        #         parsed_str = '1 n'
+        #     search = self.df[self.df['Name'] == parsed_str]
+        #     if search.empty:
+        #         if not mass or not z:
+        #             print('Cannot find: ' + name)
+        #             exit(1)
+        #     else:
+        #         particle = self.df.iloc[search.index[0]].copy()
+        #     particle['Name'] = name
+        #     if mass is not None:
+        #         particle['Mass'] = mass
+        #     if z is not None:
+        #         particle['z'] = z
+        #     self.target.append(particle)
 
-        def set_partition(self, qval=None, nex=None, pwf=None):
-            if qval is not None:
-                self.partition['qval'] = qval
-            if nex is not None:
-                self.partition['nex'] = nex
-            if pwf is not None:
-                self.partition['pwf'] = pwf
-
-        def set_state(self, proj=None, target=None, cpot=1):
-            if (type(proj) != int and len(proj) != 2) or (type(target) != int and len(target) != 2):
-                print('States format invalid')
+        def set_partition(self, qval=None, nex=None, pwf=None, proj=None, massp=None, zp=None, target=None, masst=None, zt=None, state=None):
+            partition = {}
+            if proj is None or target is None:
+                print('proj and target are necessary!')
                 exit(1)
-            state = {}
-            if type(proj) == list:
-                state['ptyp'] = 1 if '+' in proj[0] else -1
-                state['jp'] = float(''.join([i for i in proj[0] if i not in '-+']))
-                state['ep'] = proj[1]
-            else:
-                state['copyp'] = proj
-            if type(target) == list:
-                state['ptyt'] = 1 if '+' in target[0] else -1
-                state['jt'] = float(''.join([i for i in target[0] if i not in '-+']))
-                state['et'] = target[1]
-            else:
-                state['copyt'] = target
-            state['cpot'] = cpot
-            self.states.append(state)
+            if qval is not None:
+                partition['qval'] = qval
+            if nex is not None:
+                partition['nex'] = nex
+            if pwf is not None:
+                partition['pwf'] = pwf
+            if massp is None or zp is None:
+                self.parse_nubase()
+                input_num = ''.join([i for i in proj if i.isdigit()])
+                input_alp = ''.join([i for i in proj if i.isalpha()]).lower().title()
+                parsed_str = input_num + input_alp
+                if proj.lower() == 'n' or (input_alp == 'N' and input_num == '1'):
+                    parsed_str = '1 n'
+                search = self.df[self.df['Name'] == parsed_str]
+                if search.empty:
+                    print('Cannot find:', proj)
+                    exit(1)
+                else:
+                    tmp = self.df.iloc[search.index[0]].copy()
+                    if massp is None:
+                        massp = tmp['Mass']
+                    if zp is None:
+                        zp = tmp['z']
+            partition['namep'] = proj
+            partition['massp'] = massp
+            partition['zp'] = zp
+
+            if masst is None or zt is None:
+                self.parse_nubase()
+                input_num = ''.join([i for i in target if i.isdigit()])
+                input_alp = ''.join([i for i in target if i.isalpha()]).lower().title()
+                parsed_str = input_num + input_alp
+                if target.lower() == 'n' or (input_alp == 'N' and input_num == '1'):
+                    parsed_str = '1 n'
+                search = self.df[self.df['Name'] == parsed_str]
+                if search.empty:
+                    print('Cannot find:', target)
+                    exit(1)
+                else:
+                    tmp = self.df.iloc[search.index[0]].copy()
+                    print(tmp)
+                    if masst is None:
+                        masst = tmp['Mass']
+                    if zt is None:
+                        zt = tmp['z']
+            partition['namet'] = target
+            partition['masst'] = masst
+            partition['zt'] = zt
+
+            if state is not None:
+                if type(state) is not list:
+                    print('state must be in list')
+                    exit(1)
+                partition['state'] = []
+                for i in state:
+                    st = {}
+                    if (type(i['proj']) != int and len(i['proj']) != 2) or (type(i['target']) != int and len(i['target']) != 2):
+                        print('States format invalid')
+                        exit(1)
+                    if type(i['proj']) == list:
+                        st['ptyp'] = 1 if '+' in i['proj'][0] else -1
+                        st['jp'] = float(''.join([i for i in i['proj'][0] if i not in '-+']))
+                        st['ep'] = i['proj'][1]
+                    else:
+                        st['copyp'] = i['proj']
+                    if type(i['target']) == list:
+                        st['ptyt'] = 1 if '+' in i['target'][0] else -1
+                        st['jt'] = float(''.join([i for i in i['target'][0] if i not in '-+']))
+                        st['et'] = i['target'][1]
+                    else:
+                        st['copyt'] = i['target']
+                    st['cpot'] = i['cpot']
+                    partition['state'].append(st)
+
+            self.partition.append(partition)
+
+            
+
+        # def set_state(self, proj=None, target=None, cpot=1):
+        #     if (type(proj) != int and len(proj) != 2) or (type(target) != int and len(target) != 2):
+        #         print('States format invalid')
+        #         exit(1)
+        #     state = {}
+        #     if type(proj) == list:
+        #         state['ptyp'] = 1 if '+' in proj[0] else -1
+        #         state['jp'] = float(''.join([i for i in proj[0] if i not in '-+']))
+        #         state['ep'] = proj[1]
+        #     else:
+        #         state['copyp'] = proj
+        #     if type(target) == list:
+        #         state['ptyt'] = 1 if '+' in target[0] else -1
+        #         state['jt'] = float(''.join([i for i in target[0] if i not in '-+']))
+        #         state['et'] = target[1]
+        #     else:
+        #         state['copyt'] = target
+        #     state['cpot'] = cpot
+        #     self.states.append(state)
 
         def set_pot(self, kp=None, *pots):
             if not kp or type(kp) != int:
@@ -322,31 +349,39 @@ else:
             f.write('  /\n\n')
 
         def __write_partition(self, f):
-            def write_pt(f, data, pt: str):
-                if pt == 'p':
-                    f.write("  namep='%8s'" % data['Name'][:8])
-                    f.write("  massp=%8.4f" % data['Mass'])
-                    f.write("  zp=%3d\n" % data['z'])
-                elif pt == 't':
-                    f.write("  namet='%8s'" % data['Name'][:8])
-                    f.write("  masst=%8.4f" % data['Mass'])
-                    f.write("  zt=%3d\n" % data['z'])
-            f.write(' &PARTITION\n')
-            for i in self.projectile:
-                write_pt(f, i, 'p')
-            for i in self.target:
-                write_pt(f, i, 't')
-            part = '  '
+            def write_pt(partition):
+                for i in partition:
+                    if i == 'namep':
+                        f.write("  namep='%8s'" % partition[i][:8])
+                    elif i == 'massp':
+                        f.write("  massp=%8.4f" % partition[i])
+                    elif i == 'zp':
+                        f.write("  zp=%3d\n" % partition[i])
+                    elif i == 'namet':
+                        f.write("  namet='%8s'" % partition[i][:8])
+                    elif i == 'masst':
+                        f.write("  masst=%8.4f" % partition[i])
+                    elif i == 'zt':
+                        f.write("  zt=%3d\n" % partition[i])
+                    
             for i in self.partition:
-                part += i + '=' + str(self.partition[i])
-                part += ' '
-            part += '/\n'
-            f.write(part)
-            for i in self.states:
-                f.write('   &STATES ')
+                f.write(' &PARTITION\n')
+                part = '  '
+                write_pt(i)
                 for j in i:
-                    f.write(' %s=%4g' % (j, i[j]))
-                f.write(' /\n')
+                    if j in ['state','namep','massp','zp','namet','masst','zt']:
+                        continue
+                    part += j + '=' + str(i[j])
+                    part += ' '
+                part += '/\n'
+                f.write(part)
+                if 'state' in i:
+                    for j in i['state']:
+                        f.write('   &STATES ')
+                        for k in j:
+                            print(k,j)
+                            f.write(' %s=%4g' % (k, j[k]))
+                        f.write(' /\n')
             f.write(' &partition /\n\n')
 
         def __write_potential(self, f):

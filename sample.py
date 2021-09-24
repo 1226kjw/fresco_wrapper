@@ -23,12 +23,30 @@ f.set_parameters(
     elab        = 42,
 )
 
-f.set_partition(qval=0.000, pwf='T', nex=2)
-f.set_projectile('11Be')
-f.set_target('197Au')
+#f.set_partition(qval=0.000, pwf='T', nex=2)
 
-f.set_state(proj=["0.5+", 0], target=["0.0+",0.0], cpot=1)
-f.set_state(proj=["0.5-", 0.3200], target=1, cpot=1)
+# f.set_projectile('11Be')
+# f.set_target('197Au')
+
+# f.set_state(proj=["0.5+", 0], target=["0.0+",0.0], cpot=1)
+# f.set_state(proj=["0.5-", 0.3200], target=1, cpot=1)
+
+f.set_partition(qval=0.000, pwf='T', nex=2,
+    proj='11Be', target='197Au',
+    state=[
+        {
+            'proj':["0.5+", 0],
+            'target':["0.0+", 0],
+            'cpot':1
+        },
+        {
+            'proj':["0.5-", 0.3200],
+            'target':1,
+            'cpot':1
+        }
+    ]
+)
+
 
 f.set_pot(1,
     #fresco.coulomb_potential(p=[197.000, 11.000, 0.0010], shape=12, step=[{'ib':1,'ia':2,'k':1,'str':0.4817},{'ib':-2,'ia':1,'k':1,'str':0.4817}]),
