@@ -15,10 +15,10 @@ NAMELIST
             namet='208Pb   ' masst=208.0000 zt= 82 qval=  0.0000/
  &STATES jp= 0.0 ptyp= 1 ep=  0.0000  cpot=  1 jt= 0.0 ptyt= 1 et=  0.0000/
  &STATES jp= 1.0 ptyp=-1 ep=  0.0000  cpot=  1 copyt= 1/
- &STATES jp= 1.0 ptyp=-1 ep=  0.0000  cpot=  1 copyt= 1/
- &STATES jp= 1.0 ptyp=-1 ep=  0.0000  cpot=  1 copyt= 1/
- &STATES jp= 1.0 ptyp=-1 ep=  0.0000  cpot=  1 copyt= 1/
- &STATES jp= 1.0 ptyp=-1 ep=  0.0000  cpot=  1 copyt= 1/
+! &STATES jp= 1.0 ptyp=-1 ep=  0.0000  cpot=  1 copyt= 1/
+! &STATES jp= 1.0 ptyp=-1 ep=  0.0000  cpot=  1 copyt= 1/
+! &STATES jp= 1.0 ptyp=-1 ep=  0.0000  cpot=  1 copyt= 1/
+! &STATES jp= 1.0 ptyp=-1 ep=  0.0000  cpot=  1 copyt= 1/
 
  &PARTITION namep='Proton  ' massp=  1.0000 zp=  1 nex=-1 
             namet='209Pb   ' masst=209.0000 zt= 82 qval=  0.0000/

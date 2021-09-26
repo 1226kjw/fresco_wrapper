@@ -139,13 +139,19 @@ else:
 
         def set_parameters(self, hcm=None, rmatch=None, rintp=None, hnl=None, rnl=None, centre=None, 
                         rasym=None, accrcy=None, switch=None, ajswtch=None,
-                        jtmin=None, jtmax=None, absend=None, jump=None, jbord=None,
-                        kqmax=None, pp=None, theta_range=None, koords=None, cut=None, cutr=None, cutc=None,
-                        ips=None, iblock=None, chans=None, smats=None, xstabl=None, nlpl=None, elab=None):
+                        jtmin=None, jtmax=None, absend=None, dry=None, rela=None, nearfa=None, jump=None, jbord=None,
+                        kqmax=None, pp=None, theta_range=None, koords=None, cutl=None, cutr=None, cutc=None,
+                        ips=None, it0=None, iter=None, iblock=None, pade=None, iso=None, nnu=None, maxl=None, minl=None, mtmin=None, epc=None,
+                        inh=None, plane=None, smallchan=None, smallcoup=None,
+                        chans=None, listcc=None, treneg=None, cdetr=None, smats=None, xstabl=None, nlpl=None, waves=None, lampl=None, kfus=None, wdisk=None,
+                        pel=None, exl=None, lab=None, lin=None, lex=None, elab=None, nlab=None):
             params = {'hcm':hcm, 'rmatch':rmatch, 'rintp':rintp, 'hnl':hnl, 'rnl':rnl, 'centre':centre, 'rasym':rasym,
-                        'accrcy':accrcy, 'switch':switch, 'ajswtch':ajswtch, 'jtmin':jtmin, 'jtmax':jtmax, 'absend':absend,
-                        'jump':jump, 'jbord':jbord, 'kqmax':kqmax, 'pp':pp, koords:koords, cut:cut, cutr:cutr, cutc:cutc,
-                        'ips':ips, 'iblock':iblock, 'chans':chans, 'smats':smats, 'xstabl':xstabl, 'nlpl':nlpl, 'elab':elab}
+                        'accrcy':accrcy, 'switch':switch, 'ajswtch':ajswtch, 'jtmin':jtmin, 'jtmax':jtmax, 'absend':absend, 'dry':dry, 'rela':rela, 'nearfa':nearfa, 'jump':jump, 'jbord':jbord,
+                        'kqmax':kqmax, 'pp':pp, 'koords':koords, 'cutl':cutl, 'cutr':cutr, 'cutc':cutc,
+                        'ips':ips, 'it0':it0, 'iter':iter, 'iblock':iblock, 'pade':pade, 'iso':iso, 'nnu':nnu, 'maxl':maxl, 'minl':minl, 'mtmin':mtmin, 'epc':epc,
+                        'inh':inh, 'plane':plane, 'smallchan':smallchan, 'smallcoup':smallcoup,
+                        'chans':chans, 'listcc':listcc, 'treneg':treneg, 'cdetr':cdetr, 'smats':smats, 'xstabl':xstabl, 'nlpl':nlpl, 'waves':waves, 'lampl':lampl, 'kfus':kfus, 'wdisk':wdisk,
+                        'pel':pel, 'exl':exl, 'lab':lab, 'lin':lin, 'lex':lex, 'elab':elab, 'nlab':nlab}
             if theta_range is not None:
                 if len(theta_range) == 2:
                     self.parameters['thmin'] = min(theta_range)
@@ -160,7 +166,35 @@ else:
                     exit(1)
             for i in params:
                 if params[i] is not None:
+                    if params[i] is True:
+                        params[i] = 'T'
+                    elif params[i] is False:
+                        params[i] = 'F'
                     self.parameters[i] = params[i]
+
+        def set_parameters_tmp(self, **kargs):
+            for i in kargs:
+                if kargs[i] is True:
+                    kargs[i] = 'T'
+                elif kargs[i] is False:
+                    kargs[i] = 'F'
+                self.parameters[i] = kargs[i]
+            if 'theta_range' in self.parameters:
+                theta_range = self.parameters['theta_range']
+                if len(theta_range) == 2:
+                    self.parameters['thmin'] = min(theta_range)
+                    self.parameters['thmax'] = max(theta_range)
+                    self.parameters['thinc'] = 1
+                elif len(theta_range) == 3 and theta_range[2] > 0:
+                    self.parameters['thmin'] = theta_range[0]
+                    self.parameters['thmax'] = theta_range[1]
+                    self.parameters['thinc'] = theta_range[2]
+                else:
+                    print('theta_range invalid')
+                    exit(1)
+                del(self.parameters['theta_range'])
+            print(self.parameters)
+
 
         # def set_projectile(self, name: str, mass=None, z=None):
         #     self.parse_nubase()
@@ -216,6 +250,10 @@ else:
             if nex is not None:
                 partition['nex'] = nex
             if pwf is not None:
+                if pwf is True:
+                    pwf = 'T'
+                elif pwf is False:
+                    pwf = 'F'
                 partition['pwf'] = pwf
             if massp is None or zp is None:
                 self.parse_nubase()
@@ -251,7 +289,6 @@ else:
                     exit(1)
                 else:
                     tmp = self.df.iloc[search.index[0]].copy()
-                    print(tmp)
                     if masst is None:
                         masst = tmp['Mass']
                     if zt is None:
@@ -267,7 +304,7 @@ else:
                 partition['state'] = []
                 for i in state:
                     st = {}
-                    if (type(i['proj']) != int and len(i['proj']) != 2) or (type(i['target']) != int and len(i['target']) != 2):
+                    if (type(i['proj']) == list and len(i['proj']) != 2) or (type(i['target']) == list and len(i['target']) != 2):
                         print('States format invalid')
                         exit(1)
                     if type(i['proj']) == list:
@@ -275,13 +312,13 @@ else:
                         st['jp'] = float(''.join([i for i in i['proj'][0] if i not in '-+']))
                         st['ep'] = i['proj'][1]
                     else:
-                        st['copyp'] = i['proj']
+                        st['copyp'] = int(i['proj'])
                     if type(i['target']) == list:
                         st['ptyt'] = 1 if '+' in i['target'][0] else -1
                         st['jt'] = float(''.join([i for i in i['target'][0] if i not in '-+']))
                         st['et'] = i['target'][1]
                     else:
-                        st['copyt'] = i['target']
+                        st['copyt'] = int(i['target'])
                     st['cpot'] = i['cpot']
                     partition['state'].append(st)
 
@@ -310,7 +347,7 @@ else:
         #     self.states.append(state)
 
         def set_pot(self, kp=None, *pots):
-            if not kp or type(kp) != int:
+            if kp is None or type(kp) != int:
                 print('kp in set_pot is invalid')
                 exit(1)
             for i in pots:
@@ -318,6 +355,11 @@ else:
                     print('potential type invalid')
                     exit(1)
                 i['kp'] = kp
+                for j in i:
+                    if i[j] is True:
+                        i[j] = 'T'
+                    elif i[j] is False:
+                        i[j] == 'F'
                 if 'step' in i and i['step'][-1]['ib'] > 0:
                     i['step'][-1]['ib'] *= -1
                 self.potentials.append(i)
@@ -331,9 +373,9 @@ else:
             self.overlap.append(over)
 
         def set_coupling(self, icto=None, icfrom=None, kind=None, ip1=None, ip2=None, ip3=None, p1=None, p2=None, jmax=None, rmax=None,
-                        kfrag=None, kcore=None, ):
+                        kfrag=None, kcore=None, cfp=None):
             coup = {'icto':icto, 'icfrom':icfrom, 'kind':kind, 'ip1':ip1, 'ip2':ip2, 'ip3':ip3, 'p1':p1, 'p2':p2, 'jmax':jmax, 'rmax':rmax,
-                    'kfrag':kfrag, 'kcore':kcore}
+                    'kfrag':kfrag, 'kcore':kcore, 'cfp':cfp}
             self.coupling.append(coup)
 
         def __write_parameters(self, f):
@@ -379,7 +421,6 @@ else:
                     for j in i['state']:
                         f.write('   &STATES ')
                         for k in j:
-                            print(k,j)
                             f.write(' %s=%4g' % (k, j[k]))
                         f.write(' /\n')
             f.write(' &partition /\n\n')
@@ -565,22 +606,22 @@ else:
                             if table is not None:
                                 table_list[table_name] = [[i,j] for i,j in zip(d_x, d_y)]
                             else:
-                                plt.plot(d_x, d_y, label=l_string)
+                                plt.plot(d_x, d_y, marker='.', markersize=3, label=l_string)
                                 plt.legend(loc=0)
                                 if l_istrue:
                                     plt.legend()
                             table_name = ''
                             d_x = []
                             d_y = []
-                        else:
+                        elif not line[0].isalpha():
                             d_x.append(float(line[0]))
                             d_y.append(float(line[1]))
                     if d_x and d_y:
                         if table is not None:
                                 table_list[table_name] = [[i,j] for i,j in zip(d_x, d_y)]
                         else:
-                            plt.plot(d_x, d_y, label=l_string)
                             plt.legend(loc=0)
+                            plt.plot(d_x, d_y, marker='.', markersize=3, label=l_string)
                         #if l_istrue:
                         #    plt.legend()
             if table is not None:
