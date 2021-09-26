@@ -1,6 +1,6 @@
 from wfresco import *
 
-f = Wfresco('sample2.frin', '1-ADCC d + 208Pb')
+f = Wfresco('p-cd.frin', 'p + 112Cd elastic')
 f.set_parameters(
     hcm         = 0.10,
     rmatch      = 20.000,

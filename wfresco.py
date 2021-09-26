@@ -104,6 +104,8 @@ else:
             self.coupling = []
             self.df = None
             self.fileinfo = None
+            self.iswritten = False
+            self.isexecuted = False
 
         def parse_nubase(self):
             if self.df is not None:
@@ -152,6 +154,8 @@ else:
                         'inh':inh, 'plane':plane, 'smallchan':smallchan, 'smallcoup':smallcoup,
                         'chans':chans, 'listcc':listcc, 'treneg':treneg, 'cdetr':cdetr, 'smats':smats, 'xstabl':xstabl, 'nlpl':nlpl, 'waves':waves, 'lampl':lampl, 'kfus':kfus, 'wdisk':wdisk,
                         'pel':pel, 'exl':exl, 'lab':lab, 'lin':lin, 'lex':lex, 'elab':elab, 'nlab':nlab}
+            self.iswritten = False
+            self.isexecuted = False
             if theta_range is not None:
                 if len(theta_range) == 2:
                     self.parameters['thmin'] = min(theta_range)
@@ -173,6 +177,8 @@ else:
                     self.parameters[i] = params[i]
 
         def set_parameters_tmp(self, **kargs):
+            self.iswritten = False
+            self.isexecuted = False
             for i in kargs:
                 if kargs[i] is True:
                     kargs[i] = 'T'
@@ -240,7 +246,9 @@ else:
         #         particle['z'] = z
         #     self.target.append(particle)
 
-        def set_partition(self, qval=None, nex=None, pwf=None, proj=None, massp=None, zp=None, target=None, masst=None, zt=None, state=None):
+        def set_partition(self, qval=None, nex=None, pwf=None, proj=None, massp=None, zp=None, target=None, masst=None, zt=None, states=None):
+            self.iswritten = False
+            self.isexecuted = False
             partition = {}
             if proj is None or target is None:
                 print('proj and target are necessary!')
@@ -297,12 +305,12 @@ else:
             partition['masst'] = masst
             partition['zt'] = zt
 
-            if state is not None:
-                if type(state) is not list:
+            if states is not None:
+                if type(states) is not list:
                     print('state must be in list')
                     exit(1)
-                partition['state'] = []
-                for i in state:
+                partition['states'] = []
+                for i in states:
                     st = {}
                     if (type(i['proj']) == list and len(i['proj']) != 2) or (type(i['target']) == list and len(i['target']) != 2):
                         print('States format invalid')
@@ -346,8 +354,10 @@ else:
         #     state['cpot'] = cpot
         #     self.states.append(state)
 
-        def set_pot(self, kp=None, *pots):
-            if kp is None or type(kp) != int:
+        def set_pot(self, kp, *pots):
+            self.iswritten = False
+            self.isexecuted = False
+            if type(kp) != int:
                 print('kp in set_pot is invalid')
                 exit(1)
             for i in pots:
@@ -367,6 +377,8 @@ else:
         def set_overlap(self, kn1=None, kn2=None, ic1=None, ic2=None, _in=None, kind=None, ch1=None, nn=None, l=None, lmax=None, sn=None, 
                         ia=None, j=None, ib=None, kbpot=None, krpot=None, be=None, isc=None, ipc=None, nfl=None, nam=None, 
                         ampl=None):
+            self.iswritten = False
+            self.isexecuted = False
             over = {'kn1':kn1, 'kn2':kn2, 'ic1':ic1, 'ic2':ic2, 'in':_in, 'kind':kind, 'ch1':ch1, 'nn':nn, 'l':l, 'lmax':lmax, 'sn':sn,
                     'ia':ia, 'j':j, 'ib':ib, 'kbpot':kbpot, 'krpot':krpot, 'be':be, 'isc':isc, 'ipc':ipc, 'nfl':nfl, 'nam':nam,
                     'ampl':ampl}
@@ -374,6 +386,8 @@ else:
 
         def set_coupling(self, icto=None, icfrom=None, kind=None, ip1=None, ip2=None, ip3=None, p1=None, p2=None, jmax=None, rmax=None,
                         kfrag=None, kcore=None, cfp=None):
+            self.iswritten = False
+            self.isexecuted = False
             coup = {'icto':icto, 'icfrom':icfrom, 'kind':kind, 'ip1':ip1, 'ip2':ip2, 'ip3':ip3, 'p1':p1, 'p2':p2, 'jmax':jmax, 'rmax':rmax,
                     'kfrag':kfrag, 'kcore':kcore, 'cfp':cfp}
             self.coupling.append(coup)
@@ -411,14 +425,14 @@ else:
                 part = '  '
                 write_pt(i)
                 for j in i:
-                    if j in ['state','namep','massp','zp','namet','masst','zt']:
+                    if j in ['states','namep','massp','zp','namet','masst','zt']:
                         continue
                     part += j + '=' + str(i[j])
                     part += ' '
                 part += '/\n'
                 f.write(part)
-                if 'state' in i:
-                    for j in i['state']:
+                if 'states' in i:
+                    for j in i['states']:
                         f.write('   &STATES ')
                         for k in j:
                             f.write(' %s=%4g' % (k, j[k]))
@@ -483,6 +497,9 @@ else:
             f.write(' &coupling /\n\n')
 
         def write_input(self):
+            if self.iswritten:
+                return
+            self.isexecuted = False
             with open(self.filename, 'w') as f:
                 f.write(self.comment)
                 f.write('NAMELIST\n')
@@ -491,8 +508,13 @@ else:
                 self.__write_potential(f)
                 self.__write_overlap(f)
                 self.__write_coupling(f)
+            self.iswritten = True
 
         def run(self):
+            if not self.iswritten:
+                self.write_input()
+            if self.isexecuted:
+                return
             try:
                 os.mkdir(self.new_dir)
             except FileExistsError:
@@ -506,8 +528,11 @@ else:
             subprocess.call("fresco < %s > %s" % (self.filename, self.output), shell=True)
             subprocess.call("mv fort.* %s" % self.new_dir, shell=True)
             subprocess.call("mv %s %s" % (self.filename, self.new_dir), shell=True)
+            self.isexecuted = True
 
         def ls(self, *filenum):
+            if not self.isexecuted:
+                self.run()
             if self.fileinfo is None:
                 self.fileinfo = {}
                 with open('file-allo2.txt', 'r') as f:
@@ -550,6 +575,8 @@ else:
                     print()
 
         def show(self, *fileno: tuple, table=None):
+            if not self.isexecuted:
+                self.run()
             graph_len = len(fileno)
             g_row = 1
             g_col = 1
@@ -560,9 +587,9 @@ else:
                     g_col += 1
             plt.rcParams["figure.figsize"] = (6 * g_col, 5 * g_row)
             for num, i in enumerate(fileno):
-                if type(num) == str and 'fort.' in num:
-                    num = int(num[num.find('.') + 1:])
-                if type(i) == int:
+                if type(i) == str and 'fort.' in i:
+                    i = int(i[i.find('.') + 1:])
+                elif type(i) == int:
                     graphinput = self.new_dir + '/fort.' + str(i)
                 else:
                     print('Invalid characters in wfresco.show()')
@@ -626,33 +653,84 @@ else:
                         #    plt.legend()
             if table is not None:
                 return table_list
-            else:
+            elif fileno:
                 plt.tight_layout()
                 plt.show()
 
         def get_table(self, n):
             return self.show(n, table=1)
 
-        def FRESCO(self, HCM=None, RMATCH=None, RINTP=None, HNL=None, RNL=None, CENTRE=None, 
-                        RASYM=None, ACCRCY=None, SWITCH=None, AJSWTCH=None,
-                        JTMIN=None, JTMAX=None, ABSEND=None, JUMP=None, JBORD=None,
-                        KQMAX=None, PP=None, THETA_RANGE=None, KOORDS=None, CUT=None, CUTR=None, CUTC=None,
-                        IPS=None, IBLOCK=None, CHANS=None, SMATS=None, XSTABL=None, NLPL=None, ELAB=None):
-            params = {'hcm':HCM, 'rmatch':RMATCH, 'rintp':RINTP, 'hnl':HNL, 'rnl':RNL, 'centre':CENTRE,
-                    'rasym':RASYM, 'accrcy':ACCRCY, 'switch':SWITCH, 'ajswtch':AJSWTCH,
-                    'jtmin':JTMIN, 'jtmax':JTMAX, 'absend':ABSEND, 'jumb':JUMP, 'jbord':JBORD,
-                    'kqmax':KQMAX, 'pp':PP, 'theta_range':THETA_RANGE, 'koords':KOORDS, 'cut':CUT, 'cutr':CUTR, 'cutc':CUTC,
-                    'ips':IPS, 'iblock':IBLOCK, 'chans':CHANS, 'smats':SMATS, 'xstabl':XSTABL, 'nlpl':NLPL, 'elab':ELAB}
-            for i in params:
-                if params[i] is not None:
-                    self.parameters[i] = params[i]
-        def PARTITION(self, parts: dict):
-            NotImplemented
-        def STATES(self, states: dict):
-            NotImplemented
-        def POT(self, states: dict):
-            NotImplemented
-        def STEP(self, states: dict):
-            NotImplemented
-        def OVERLAP(self, states: dict):
-            NotImplemented
+        # def FRESCO(self, HCM=None, RMATCH=None, RINTP=None, HNL=None, RNL=None, CENTRE=None, 
+        #                 RASYM=None, ACCRCY=None, SWITCH=None, AJSWTCH=None,
+        #                 JTMIN=None, JTMAX=None, ABSEND=None, DRY=None, RELA=None, NEARFA=None, JUMP=None, JBORD=None,
+        #                 KQMAX=None, PP=None, KOORDS=None, CUTL=None, CUTR=None, CUTC=None,
+        #                 IPS=None, IT0=None, ITER=None, IBLOCK=None, PADE=None, ISO=None, NNU=None, MAXL=None, MINL=None, MTMIN=None, EPC=None,
+        #                 INH=None, PLANE=None, SMALLCHAN=None, SMALLCOUP=None,
+        #                 CHANS=None, LISTCC=None, TRENEG=None, CDETR=None, SMATS=None, XSTABL=None, NLPL=None, WAVES=None, LAMPL=None, KFUS=None, WDISK=None,
+        #                 PEL=None, EXL=None, LAB=None, LIN=None, LEX=None, ELAB=None, NLAB=None):
+        #     params = {'hcm':HCM, 'rmatch':RMATCH, 'rintp':RINTP, 'hnl':HNL, 'rnl':RNL, 'centre':CENTRE,
+        #                 'rasym':RASYM, 'accrcy':ACCRCY, 'switch':SWITCH, 'ajswtch':AJSWTCH,
+        #                 'jtmin':JTMIN, 'jtmax':JTMAX, 'absend':ABSEND, 'dry':DRY, 'rela':RELA, 'nearfa':NEARFA, 'jump':JUMP, 'jbord':JBORD,
+        #                 'kqmax':KQMAX, 'pp':PP, 'koords':KOORDS, 'cutl':CUTL, 'cutr':CUTR, 'cutc':CUTC,
+        #                 'ips':IPS, 'it0':IT0, 'iter':ITER, 'iblock':IBLOCK, 'pade':PADE, 'iso':ISO, 'nnu':NNU, 'maxl':MAXL, 'minl':MINL, 'mtmin':MTMIN, 'epc':EPC,
+        #                 'inh':INH, 'plane':PLANE, 'smallchan':SMALLCHAN, 'smallcoup':SMALLCOUP,
+        #                 'chans':CHANS, 'listcc':LISTCC, 'treneg':TRENEG, 'cdetr':CDETR, 'smats':SMATS, 'xstabl':XSTABL, 'nlpl':NLPL, 'waves':WAVES, 'lampl':LAMPL, 'kfus':KFUS, 'wdisk':WDISK,
+        #                 'pel':PEL, 'exl':EXL, 'lab':LAB, 'lin':LIN, 'lex':LEX, 'elab':ELAB, 'nlab':NLAB}
+        #     for i in params:
+        #         if params[i] is not None:
+        #             self.parameters[i] = params[i]
+
+        def FRESCO(self, **kargs):
+            for i in kargs:
+                self.parameters[i.lower()] = kargs[i]
+
+        def PARTITION(self, **kargs):
+            partition = {}
+            for i in kargs:
+                partition[i.lower()] = kargs[i]
+            self.partition.append(partition)
+
+        def STATES(self, **kargs):
+            state = {}
+            for i in kargs:
+                state[i.lower()] = kargs[i]
+            if 'states' not in self.partition[-1]:
+                self.partition[-1]['states'] = [state]
+            else:
+                self.partition[-1]['states'].append(state)
+
+        def POT(self, **kargs):
+            pot = {}
+            for i in kargs:
+                pot[i.lower()] = kargs[i]
+            self.potentials.append(pot)
+
+        def STEP(self, **kargs):
+            step = {}
+            for i in kargs:
+                step[i.lower()] = kargs[i]
+            if 'step' not in self.potentials[-1]:
+                self.potentials[-1]['step'] = [step]
+            else:
+                self.potentials[-1]['step'].append(step)
+
+        def OVERLAP(self, **kargs):
+            overlap = {}
+            for i in kargs:
+                overlap[i.lower()] = kargs[i]
+            self.overlap.append(overlap)
+
+        def COUPLING(self, **kargs):
+            coupling = {}
+            for i in kargs:
+                coupling[i.lower()] = kargs[i]
+            self.coupling.append(coupling)
+
+        def CFP(self, **kargs):
+            cfp = {}
+            for i in kargs:
+                cfp[i.lower()] = kargs[i]
+            if 'cfp' not in self.coupling[-1]:
+                self.coupling[-1]['cfp'] = [cfp]
+            else:
+                self.coupling[-1]['cfp'].append(cfp)

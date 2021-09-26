@@ -1,5 +1,4 @@
 from wfresco import *
-#import wfresco
 
 f = Wfresco('be11.frin', '11Be + 197Au')
 f.set_parameters(
@@ -33,7 +32,7 @@ f.set_parameters(
 
 f.set_partition(qval=0.000, pwf='T', nex=2,
     proj='11Be', target='197Au',
-    state=[
+    states=[
         {
             'proj':["0.5+", 0],
             'target':["0.0+", 0],
@@ -51,7 +50,7 @@ f.set_partition(qval=0.000, pwf='T', nex=2,
 f.set_pot(1,
     #fresco.coulomb_potential(p=[197.000, 11.000, 0.0010], shape=12, step=[{'ib':1,'ia':2,'k':1,'str':0.4817},{'ib':-2,'ia':1,'k':1,'str':0.4817}]),
     {'type':COULOMB_POTENTIAL, 'p':[197.000, 11.000, 0.0010]},
-    {'type':PROJECTILE_COUPLED, 'p':[197.000, 11.000, 0.0010], 'step':[{'ib':1,'ia':2,'k':1,'str':0.4817},{'ib':-2,'ia':1,'k':1,'str':0.4817}] },
+    {'type':PROJECTILE_COUPLED, 'p':[197.000, 11.000, 0.0010], 'step':[{'ib':1,'ia':2,'k':1,'str':0.4817},{'ib':-2,'ia':1,'k':1,'str':0.4817}]},
     {'type':CENTRAL_POTENTIAL_VOLUME, 'p':[40.000, 1.2290, 0.6120, 15.0000, 1.2290, 0.6120, 0.0000]},
     {'type':PROJECTILE_COUPLED, 'p':[0.497, 0.0000, 0.0000], 'itt':False, 'shape':12,'step':[{'ib':1,'ia':2,'k':1,'str':0.4968},{'ib':-2,'ia':1,'k':1,'str':0.4968}]},
 )
