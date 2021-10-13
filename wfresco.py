@@ -45,7 +45,7 @@ if __name__ == '__main__': #실행시 frin파일을 input으로 받아 .py로 �
                         j = line.rfind(')', 0, None if '#' not in line else line.find('#'))
                         parsing = line[i:j]
                         parsing = re.sub(r'\([^)]*\)', '', parsing)
-                        parsing_list = re.findall("(?:\'.*?\'|\S)+", parsing) #공백기준 스플릿, 따옴표내부 공백 무시
+                        parsing_list = re.findall("(?:\'.*?\'|\S)+", parsing) #공백기준 스플릿, 따옴표내부 공백은 무시
                         for pi in range(len(parsing_list) - 1, 0, -1):      #jump(1:6)=0 0 0 0 0 0 -> jump=[0,0,0,0,0,0]
                             if not parsing_list[pi][0].isalpha():
                                 parsing_list[pi - 1] += ' ' + parsing_list[pi]
@@ -140,18 +140,18 @@ else:
                     axis=1, inplace=True)
 
         def set_parameters(self, hcm=None, rmatch=None, rintp=None, hnl=None, rnl=None, centre=None, 
-                        rasym=None, accrcy=None, switch=None, ajswtch=None,
+                        rasym=None, accrcy=None, switch=None, ajswtch=None, rsp=None,
                         jtmin=None, jtmax=None, absend=None, dry=None, rela=None, nearfa=None, jump=None, jbord=None,
                         kqmax=None, pp=None, theta_range=None, koords=None, cutl=None, cutr=None, cutc=None,
                         ips=None, it0=None, iter=None, iblock=None, pade=None, iso=None, nnu=None, maxl=None, minl=None, mtmin=None, epc=None,
-                        inh=None, plane=None, smallchan=None, smallcoup=None,
+                        inh=None, plane=None, smallchan=None, smallcoup=None, cdcc=None,
                         chans=None, listcc=None, treneg=None, cdetr=None, smats=None, xstabl=None, nlpl=None, waves=None, lampl=None, kfus=None, wdisk=None,
                         pel=None, exl=None, lab=None, lin=None, lex=None, elab=None, nlab=None):
             params = {'hcm':hcm, 'rmatch':rmatch, 'rintp':rintp, 'hnl':hnl, 'rnl':rnl, 'centre':centre, 'rasym':rasym,
-                        'accrcy':accrcy, 'switch':switch, 'ajswtch':ajswtch, 'jtmin':jtmin, 'jtmax':jtmax, 'absend':absend, 'dry':dry, 'rela':rela, 'nearfa':nearfa, 'jump':jump, 'jbord':jbord,
+                        'accrcy':accrcy, 'switch':switch, 'ajswtch':ajswtch, 'rsp':rsp, 'jtmin':jtmin, 'jtmax':jtmax, 'absend':absend, 'dry':dry, 'rela':rela, 'nearfa':nearfa, 'jump':jump, 'jbord':jbord,
                         'kqmax':kqmax, 'pp':pp, 'koords':koords, 'cutl':cutl, 'cutr':cutr, 'cutc':cutc,
                         'ips':ips, 'it0':it0, 'iter':iter, 'iblock':iblock, 'pade':pade, 'iso':iso, 'nnu':nnu, 'maxl':maxl, 'minl':minl, 'mtmin':mtmin, 'epc':epc,
-                        'inh':inh, 'plane':plane, 'smallchan':smallchan, 'smallcoup':smallcoup,
+                        'inh':inh, 'plane':plane, 'smallchan':smallchan, 'smallcoup':smallcoup, 'cdcc':cdcc,
                         'chans':chans, 'listcc':listcc, 'treneg':treneg, 'cdetr':cdetr, 'smats':smats, 'xstabl':xstabl, 'nlpl':nlpl, 'waves':waves, 'lampl':lampl, 'kfus':kfus, 'wdisk':wdisk,
                         'pel':pel, 'exl':exl, 'lab':lab, 'lin':lin, 'lex':lex, 'elab':elab, 'nlab':nlab}
             self.iswritten = False
@@ -328,7 +328,7 @@ else:
                     else:
                         st['copyt'] = int(i['target'])
                     st['cpot'] = i['cpot']
-                    partition['state'].append(st)
+                    partition['states'].append(st)
 
             self.partition.append(partition)
 
@@ -354,12 +354,22 @@ else:
         #     state['cpot'] = cpot
         #     self.states.append(state)
 
-        def set_pot(self, kp, *pots):
+        def set_pot(self, kp, ap=None, at=None, rc=None, pots=None):
             self.iswritten = False
             self.isexecuted = False
             if type(kp) != int:
                 print('kp in set_pot is invalid')
                 exit(1)
+            tmp = {}
+            if ap is not None:
+                tmp['ap'] = ap
+            if at is not None:
+                tmp['at'] = at
+            if rc is not None:
+                tmp['rc'] = rc
+            if tmp:
+                tmp['kp'] = kp
+                self.potentials.append(tmp)
             for i in pots:
                 if 'type' in i and (not (0 <= i['type'] <= 13 or i['type'] == 30) or i['type'] == 9):
                     print('potential type invalid')
@@ -376,12 +386,12 @@ else:
 
         def set_overlap(self, kn1=None, kn2=None, ic1=None, ic2=None, _in=None, kind=None, ch1=None, nn=None, l=None, lmax=None, sn=None, 
                         ia=None, j=None, ib=None, kbpot=None, krpot=None, be=None, isc=None, ipc=None, nfl=None, nam=None, 
-                        ampl=None):
+                        ampl=None, keep=None, dm=None, nk=None, er=None, e=None):
             self.iswritten = False
             self.isexecuted = False
             over = {'kn1':kn1, 'kn2':kn2, 'ic1':ic1, 'ic2':ic2, 'in':_in, 'kind':kind, 'ch1':ch1, 'nn':nn, 'l':l, 'lmax':lmax, 'sn':sn,
                     'ia':ia, 'j':j, 'ib':ib, 'kbpot':kbpot, 'krpot':krpot, 'be':be, 'isc':isc, 'ipc':ipc, 'nfl':nfl, 'nam':nam,
-                    'ampl':ampl}
+                    'ampl':ampl, 'keep':keep, 'dm':dm, 'nk':nk, 'er':er, 'e':e}
             self.overlap.append(over)
 
         def set_coupling(self, icto=None, icfrom=None, kind=None, ip1=None, ip2=None, ip3=None, p1=None, p2=None, jmax=None, rmax=None,
@@ -500,6 +510,7 @@ else:
             if self.iswritten:
                 return
             self.isexecuted = False
+            print("Write input(" + self.filename + ")")
             with open(self.filename, 'w') as f:
                 f.write(self.comment)
                 f.write('NAMELIST\n')
@@ -515,6 +526,7 @@ else:
                 self.write_input()
             if self.isexecuted:
                 return
+            print("Run fresco(fresco < %s > %s)" % (self.filename, self.output))
             try:
                 os.mkdir(self.new_dir)
             except FileExistsError:
