@@ -1,4 +1,3 @@
-from io import RawIOBase
 import sys
 import os
 import shlex
@@ -8,10 +7,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import re
 from fractions import Fraction
+
 """
-'fresco' must be executable and added in $PATH to execute by command 'fresco'
-
-
+FRESCO must be executable and added in $PATH to execute by command 'fresco'
+In WSL, GUI(ex. plotting) needs more settings with .
 """
 if __name__ == '__main__': #실행시 frin파일을 input으로 받아 .py로 변환 ex) "python3 wfresco.py inputs/be11.frin" will make inputs/be11.py
     if len(sys.argv) <= 1:
@@ -69,6 +68,7 @@ if __name__ == '__main__': #실행시 frin파일을 input으로 받아 .py로 �
             fpy.close()
 
 else:
+    typedef = {'i':[int], 'f':[float, int], 'b':[bool], 's':[str]}
     COULOMB_POTENTIAL = 0
     CENTRAL_POTENTIAL_VOLUME = 1
     CENTRAL_POTENTIAL_DERIVATIVE = 2
@@ -83,8 +83,11 @@ else:
     PROJECTILE_COUPLED = 12
     TARGET_COUPLED = 13
     L_L1_CENTRAL_POTENTIAL = 30
+
     class Wfresco:
         def __init__(self, filename: str, comment: str):
+            pd.set_option('display.max_rows', None)
+            pd.set_option('display.width', None)
             if '/' in filename:
                 print("'/' in filename!")
                 exit(1)
@@ -102,13 +105,15 @@ else:
             self.potentials = []
             self.overlap = []
             self.coupling = []
-            self.df = None
+            self.nubase = None
             self.fileinfo = None
+            self.arginfo = pd.read_excel('nml_fresco.xlsx')
+            self.arginfo.fillna('', inplace=True)
             self.iswritten = False
             self.isexecuted = False
 
         def parse_nubase(self):
-            if self.df is not None:
+            if self.nubase is not None:
                 return
             def parsing_spin(j: str):
                 j = ''.join(i for i in j if i not in '()#-+*T=<>.' and not i.islower())
@@ -129,14 +134,14 @@ else:
                 '_1', 'JPI', '_2', '_3', '_4', '_5'
             ]
             type_list   = {i: str for i in name_list}
-            self.df = pd.read_csv('nubase2016.csv', names=name_list, dtype=type_list, keep_default_na=False)
+            self.nubase = pd.read_csv('nubase2016.csv', names=name_list, dtype=type_list, keep_default_na=False)
             pd.set_option('display.max_columns', None)
-            self.df['a']     = self.df['a'].apply(int)
-            self.df['z']     = self.df['z'].apply(int)
-            self.df['Mass']  = self.df['a'] + self.df['Mass excess'].apply(lambda x: float(x.strip('#')) / 931494.013 if x != '' else 0)
-            self.df['PI']    = self.df['JPI'].apply(lambda x: -1 if '-' in x else 1)
-            self.df['J']     = self.df['JPI'].apply(parsing_spin)
-            self.df.drop(['_0', '_1', '_2', '_3', '_4', '_5', 'JPI', 'Mass excess', 'Mass excess err', 'flag', 'Half-life', 'Unit'],
+            self.nubase['a']     = self.nubase['a'].apply(int)
+            self.nubase['z']     = self.nubase['z'].apply(int)
+            self.nubase['Mass']  = self.nubase['a'] + self.nubase['Mass excess'].apply(lambda x: float(x.strip('#')) / 931494.013 if x != '' else 0)
+            self.nubase['PI']    = self.nubase['JPI'].apply(lambda x: -1 if '-' in x else 1)
+            self.nubase['J']     = self.nubase['JPI'].apply(parsing_spin)
+            self.nubase.drop(['_0', '_1', '_2', '_3', '_4', '_5', 'JPI', 'Mass excess', 'Mass excess err', 'flag', 'Half-life', 'Unit'],
                     axis=1, inplace=True)
 
         def set_parameters(self, hcm=None, rmatch=None, rintp=None, hnl=None, rnl=None, centre=None, 
@@ -176,75 +181,42 @@ else:
                         params[i] = 'F'
                     self.parameters[i] = params[i]
 
-        def set_parameters_tmp(self, **kargs):
+        def set_parameters_v1(self, **kargs):
             self.iswritten = False
             self.isexecuted = False
+            if 'theta_range' in kargs:
+                theta_range = kargs['theta_range']
+                if len(theta_range) == 2:
+                    kargs['thmin'] = min(theta_range)
+                    kargs['thmax'] = max(theta_range)
+                    kargs['thinc'] = 1
+                elif len(theta_range) == 3 and theta_range[2] > 0:
+                    kargs['thmin'] = theta_range[0]
+                    kargs['thmax'] = theta_range[1]
+                    kargs['thinc'] = theta_range[2]
+                else:
+                    print('theta_range invalid')
+                    exit(1)
+                del(kargs['theta_range'])
+            if 'jt_range' in kargs:
+                kargs['jtmin'] = min(kargs['jt_range'])
+                kargs['jtmax'] = max(kargs['jt_range'])
+                del(kargs['jt_range'])
             for i in kargs:
+                search = self.arginfo[self.arginfo['short_name'] == i]
+                if search.empty:
+                    print('Unknown arg:', i)
+                    return
+                if type(kargs[i]) not in typedef[search['type'].iloc[0]]:
+                    print('Invalid type:', i)
+                    print('Expected:', typedef[search['type'].iloc[0]])
+                    print('Given:', type(kargs[i]))
+                    return
                 if kargs[i] is True:
                     kargs[i] = 'T'
                 elif kargs[i] is False:
                     kargs[i] = 'F'
                 self.parameters[i] = kargs[i]
-            if 'theta_range' in self.parameters:
-                theta_range = self.parameters['theta_range']
-                if len(theta_range) == 2:
-                    self.parameters['thmin'] = min(theta_range)
-                    self.parameters['thmax'] = max(theta_range)
-                    self.parameters['thinc'] = 1
-                elif len(theta_range) == 3 and theta_range[2] > 0:
-                    self.parameters['thmin'] = theta_range[0]
-                    self.parameters['thmax'] = theta_range[1]
-                    self.parameters['thinc'] = theta_range[2]
-                else:
-                    print('theta_range invalid')
-                    exit(1)
-                del(self.parameters['theta_range'])
-            print(self.parameters)
-
-
-        # def set_projectile(self, name: str, mass=None, z=None):
-        #     self.parse_nubase()
-        #     input_num = ''.join([i for i in name if i.isdigit()])
-        #     input_alp = ''.join([i for i in name if i.isalpha()]).lower().title()
-        #     parsed_str = input_num + input_alp
-        #     particle = {}
-        #     if name == 'n' or (input_alp == 'N' and input_num == '1'):
-        #         parsed_str = '1 n'
-        #     search = self.df[self.df['Name'] == parsed_str]
-        #     if search.empty:
-        #         if not mass or not z:
-        #             print('Cannot find: ' + name)
-        #             exit(1)
-        #     else:
-        #         particle = self.df.iloc[search.index[0]].copy()
-        #     particle['Name'] = name
-        #     if mass is not None:
-        #         particle['Mass'] = mass
-        #     if z is not None:
-        #         particle['z'] = z
-        #     self.projectile.append(particle)
-
-        # def set_target(self, name: str, mass=None, z=None):
-        #     self.parse_nubase()
-        #     input_num = ''.join([i for i in name if i.isdigit()])
-        #     input_alp = ''.join([i for i in name if i.isalpha()]).lower().title()
-        #     parsed_str = input_num + input_alp
-        #     particle = {}
-        #     if name == 'n' or (input_alp == 'N' and input_num == '1'):
-        #         parsed_str = '1 n'
-        #     search = self.df[self.df['Name'] == parsed_str]
-        #     if search.empty:
-        #         if not mass or not z:
-        #             print('Cannot find: ' + name)
-        #             exit(1)
-        #     else:
-        #         particle = self.df.iloc[search.index[0]].copy()
-        #     particle['Name'] = name
-        #     if mass is not None:
-        #         particle['Mass'] = mass
-        #     if z is not None:
-        #         particle['z'] = z
-        #     self.target.append(particle)
 
         def set_partition(self, qval=None, nex=None, pwf=None, proj=None, massp=None, zp=None, target=None, masst=None, zt=None, states=None):
             self.iswritten = False
@@ -270,12 +242,12 @@ else:
                 parsed_str = input_num + input_alp
                 if proj.lower() == 'n' or (input_alp == 'N' and input_num == '1'):
                     parsed_str = '1 n'
-                search = self.df[self.df['Name'] == parsed_str]
+                search = self.nubase[self.nubase['Name'] == parsed_str]
                 if search.empty:
                     print('Cannot find:', proj)
                     exit(1)
                 else:
-                    tmp = self.df.iloc[search.index[0]].copy()
+                    tmp = self.nubase.iloc[search.index[0]].copy()
                     if massp is None:
                         massp = tmp['Mass']
                     if zp is None:
@@ -291,12 +263,12 @@ else:
                 parsed_str = input_num + input_alp
                 if target.lower() == 'n' or (input_alp == 'N' and input_num == '1'):
                     parsed_str = '1 n'
-                search = self.df[self.df['Name'] == parsed_str]
+                search = self.nubase[self.nubase['Name'] == parsed_str]
                 if search.empty:
                     print('Cannot find:', target)
                     exit(1)
                 else:
-                    tmp = self.df.iloc[search.index[0]].copy()
+                    tmp = self.nubase.iloc[search.index[0]].copy()
                     if masst is None:
                         masst = tmp['Mass']
                     if zt is None:
@@ -329,30 +301,7 @@ else:
                         st['copyt'] = int(i['target'])
                     st['cpot'] = i['cpot']
                     partition['states'].append(st)
-
             self.partition.append(partition)
-
-            
-
-        # def set_state(self, proj=None, target=None, cpot=1):
-        #     if (type(proj) != int and len(proj) != 2) or (type(target) != int and len(target) != 2):
-        #         print('States format invalid')
-        #         exit(1)
-        #     state = {}
-        #     if type(proj) == list:
-        #         state['ptyp'] = 1 if '+' in proj[0] else -1
-        #         state['jp'] = float(''.join([i for i in proj[0] if i not in '-+']))
-        #         state['ep'] = proj[1]
-        #     else:
-        #         state['copyp'] = proj
-        #     if type(target) == list:
-        #         state['ptyt'] = 1 if '+' in target[0] else -1
-        #         state['jt'] = float(''.join([i for i in target[0] if i not in '-+']))
-        #         state['et'] = target[1]
-        #     else:
-        #         state['copyt'] = target
-        #     state['cpot'] = cpot
-        #     self.states.append(state)
 
         def set_pot(self, kp, ap=None, at=None, rc=None, pots=None):
             self.iswritten = False
