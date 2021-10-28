@@ -90,10 +90,10 @@ else:
             pd.set_option('display.width', None)
             if '/' in filename:
                 print("'/' in filename!")
-                exit(1)
+                return
             if '\n' in comment:
                 print("newline in comment!")
-                exit(1)
+                return
             self.filename = filename
             self.new_dir = self.filename[:self.filename.rfind('.') if '.' in self.filename else None]
             self.output = self.new_dir + '.out'
@@ -172,7 +172,7 @@ else:
                     self.parameters['thinc'] = theta_range[2]
                 else:
                     print('theta_range invalid')
-                    exit(1)
+                    return
             for i in params:
                 if params[i] is not None:
                     if params[i] is True:
@@ -196,7 +196,7 @@ else:
                     kargs['thinc'] = theta_range[2]
                 else:
                     print('theta_range invalid')
-                    exit(1)
+                    return
                 del(kargs['theta_range'])
             if 'jt_range' in kargs:
                 kargs['jtmin'] = min(kargs['jt_range'])
@@ -224,7 +224,7 @@ else:
             partition = {}
             if proj is None or target is None:
                 print('proj and target are necessary!')
-                exit(1)
+                return
             if qval is not None:
                 partition['qval'] = qval
             if nex is not None:
@@ -245,7 +245,7 @@ else:
                 search = self.nubase[self.nubase['Name'] == parsed_str]
                 if search.empty:
                     print('Cannot find:', proj)
-                    exit(1)
+                    return
                 else:
                     tmp = self.nubase.iloc[search.index[0]].copy()
                     if massp is None:
@@ -266,7 +266,7 @@ else:
                 search = self.nubase[self.nubase['Name'] == parsed_str]
                 if search.empty:
                     print('Cannot find:', target)
-                    exit(1)
+                    return
                 else:
                     tmp = self.nubase.iloc[search.index[0]].copy()
                     if masst is None:
@@ -280,13 +280,13 @@ else:
             if states is not None:
                 if type(states) is not list:
                     print('state must be in list')
-                    exit(1)
+                    return
                 partition['states'] = []
                 for i in states:
                     st = {}
                     if (type(i['proj']) == list and len(i['proj']) != 2) or (type(i['target']) == list and len(i['target']) != 2):
                         print('States format invalid')
-                        exit(1)
+                        return
                     if type(i['proj']) == list:
                         st['ptyp'] = 1 if '+' in i['proj'][0] else -1
                         st['jp'] = float(''.join([i for i in i['proj'][0] if i not in '-+']))
@@ -308,7 +308,7 @@ else:
             self.isexecuted = False
             if type(kp) != int:
                 print('kp in set_pot is invalid')
-                exit(1)
+                return
             tmp = {}
             if ap is not None:
                 tmp['ap'] = ap
@@ -322,7 +322,7 @@ else:
             for i in pots:
                 if 'type' in i and (not (0 <= i['type'] <= 13 or i['type'] == 30) or i['type'] == 9):
                     print('potential type invalid')
-                    exit(1)
+                    return
                 i['kp'] = kp
                 for j in i:
                     if i[j] is True:
@@ -482,7 +482,7 @@ else:
                 print(self.new_dir+'/', 'is already exists. Overwrite?(y/n)')
                 choice = input()
                 if choice != 'y':
-                    exit(1)
+                    return
                 for i in os.listdir(self.new_dir):
                     os.remove('%s/%s' % (self.new_dir, i))
             self.output = self.new_dir + '/' + self.output
