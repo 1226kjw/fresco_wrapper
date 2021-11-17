@@ -2,7 +2,6 @@ import sys
 import os
 import shlex
 import subprocess
-from numpy import rint
 import pandas as pd
 import matplotlib.pyplot as plt
 import re
@@ -21,23 +20,27 @@ if __name__ == '__main__': #실행시 frin파일을 input으로 받아 .py로 �
             dot = arg.rfind('.')
             fpy = open(arg[:dot if dot != -1 else None] + '.py', 'w')
             fpy.write('from wfresco import *\n\n')
-            fpy.write('#' + f.readline() + '\n')
+            comment = f.readline().strip()
+            if comment[-1] == '\n':
+                comment = comment[:-1]
             while True:
                 line = f.readline()
                 if not line:
                     break
                 if line.strip().upper() == 'NAMELIST':
-                    fpy.write("fresco = Wfresco('filename.frin', 'comment')\n")
+                    fpy.write("f = Wfresco('%s', '%s')\n" % (arg[arg.rfind('/') + 1:], comment))
                 else:
                     line = line.strip()
                     if line and '&' == line[0]:
-                        line = line.replace('&', 'fresco.')
+                        line = line.replace('&', 'f.')
                         while '/' not in line:
                             line += ' ' + f.readline().strip()
                         line = re.sub(r"('[^']*')| +", lambda x: x.group() if '\'' in x.group() else ' ', line) #공백여러개를 한개로 줄이기, 따옴표 내부 공백 무시
-                        line = re.sub('= ?', '=', line)
+                        line = re.sub(' ?= ?', '=', line)
+                        if ' ' not in line:
+                            continue
                         line = line.replace(' ', '(', 1)
-                        line = line[:7] + line[7:line.find('(')].upper() + line[line.find('('):]
+                        line = line[:2] + line[2:line.find('(')].upper() + line[line.find('('):]
                         line = re.sub(' */', ')', line)					
                         line = line.replace('!', '#')
                         i = line.find('(') + 1
@@ -68,7 +71,6 @@ if __name__ == '__main__': #실행시 frin파일을 input으로 받아 .py로 �
             fpy.close()
 
 else:
-    typedef = {'i':[int], 'f':[float, int], 'b':[bool], 's':[str]}
     COULOMB_POTENTIAL = 0
     CENTRAL_POTENTIAL_VOLUME = 1
     CENTRAL_POTENTIAL_DERIVATIVE = 2
@@ -107,6 +109,7 @@ else:
             self.coupling = []
             self.nubase = None
             self.fileinfo = None
+            self.gui = True
             self.arginfo = pd.read_excel('nml_fresco.xlsx')
             self.arginfo.fillna('', inplace=True)
             self.iswritten = False
@@ -184,6 +187,8 @@ else:
         def set_parameters_v1(self, **kargs):
             self.iswritten = False
             self.isexecuted = False
+            typedef = {'i':[int], 'f':[float, int], 'b':[bool, str], 's':[str]}
+
             if 'theta_range' in kargs:
                 theta_range = kargs['theta_range']
                 if len(theta_range) == 2:
@@ -202,8 +207,9 @@ else:
                 kargs['jtmin'] = min(kargs['jt_range'])
                 kargs['jtmax'] = max(kargs['jt_range'])
                 del(kargs['jt_range'])
+
             for i in kargs:
-                search = self.arginfo[self.arginfo['short_name'] == i]
+                search = self.arginfo[self.arginfo['short_name'] == i.lower()]
                 if search.empty:
                     print('Unknown arg:', i)
                     return
@@ -212,10 +218,12 @@ else:
                     print('Expected:', typedef[search['type'].iloc[0]])
                     print('Given:', type(kargs[i]))
                     return
-                if kargs[i] is True:
-                    kargs[i] = 'T'
-                elif kargs[i] is False:
-                    kargs[i] = 'F'
+                if search['type'].iloc[0] == 'b':
+                    NotImplemented
+                    if kargs[i] is True:
+                        kargs[i] = 'T'
+                    elif kargs[i] is False:
+                        kargs[i] = 'F'
                 self.parameters[i] = kargs[i]
 
         def set_partition(self, qval=None, nex=None, pwf=None, proj=None, massp=None, zp=None, target=None, masst=None, zt=None, states=None):
@@ -535,7 +543,7 @@ else:
                         print('%10s : %10s' % (column[j], info[j]))
                     print()
 
-        def show(self, *fileno: tuple, table=None):
+        def plot(self, *fileno: tuple, table=None):
             if not self.isexecuted:
                 self.run()
             graph_len = len(fileno)
@@ -553,7 +561,7 @@ else:
                 elif type(i) == int:
                     graphinput = self.new_dir + '/fort.' + str(i)
                 else:
-                    print('Invalid characters in wfresco.show()')
+                    print('Invalid characters in wfresco.plot()')
                     return
                 print('Graph', num+1, ':', graphinput)
                 plt.subplot(g_row, g_col, num + 1)
@@ -616,10 +624,15 @@ else:
                 return table_list
             elif fileno:
                 plt.tight_layout()
-                plt.show()
+                if not self.gui:
+                    pngname = self.new_dir + '/' + ':'.join(map(str, fileno))
+                    plt.savefig(pngname)
+                    subprocess.call("wslview %s" % (pngname + '.png'), shell=True)
+                else:
+                    plt.show()
 
         def get_table(self, n):
-            return self.show(n, table=1)
+            return self.plot(n, table=1)
 
         # def FRESCO(self, HCM=None, RMATCH=None, RINTP=None, HNL=None, RNL=None, CENTRE=None, 
         #                 RASYM=None, ACCRCY=None, SWITCH=None, AJSWTCH=None,
