@@ -600,7 +600,7 @@ else:
                                     plt.ylabel(line[2])
                         elif line[0].lower() == 'end' or line[0][0] == '&':
                             if table is not None:
-                                table_list[table_name] = [[i,j] for i,j in zip(d_x, d_y)]
+                                table_list[table_name] = pd.DataFrame([[i,j] for i, j in zip(d_x, d_y)])
                             else:
                                 plt.plot(d_x, d_y, marker='.', markersize=3, label=l_string)
                                 plt.legend(loc=0)
@@ -614,7 +614,7 @@ else:
                             d_y.append(float(line[1]))
                     if d_x and d_y:
                         if table is not None:
-                                table_list[table_name] = [[i,j] for i,j in zip(d_x, d_y)]
+                                table_list[table_name] = pd.DataFrame([[i,j] for i, j in zip(d_x, d_y)])
                         else:
                             plt.legend(loc=0)
                             plt.plot(d_x, d_y, marker='.', markersize=3, label=l_string)
