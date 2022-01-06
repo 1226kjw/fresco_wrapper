@@ -9,9 +9,9 @@ from fractions import Fraction
 
 """
 FRESCO must be executable and added in $PATH to execute by command 'fresco'
-In WSL, GUI(ex. plotting) needs more settings with .
 """
-if __name__ == '__main__': #실행시 frin파일을 input으로 받아 .py로 변환 ex) "python3 wfresco.py inputs/be11.frin" will make inputs/be11.py
+
+if __name__ == '__main__': # ex) "python3 wfresco.py inputs/be11.frin" will make inputs/be11.py
     if len(sys.argv) <= 1:
         print('input file required')
         exit(1)
@@ -98,6 +98,16 @@ else:
                 return
             self.filename = filename
             self.new_dir = self.filename[:self.filename.rfind('.') if '.' in self.filename else None]
+            try:
+                os.mkdir(self.new_dir)
+            except FileExistsError:
+                print(self.new_dir+'/', 'is already exists. Overwrite? (y/n)')
+                choice = input()
+                if choice != 'y' and choice != 'Y':
+                    return
+                for i in os.listdir(self.new_dir):
+                    if i[i.rfind('.') + 1:].isdigit():
+                        os.remove('%s/%s' % (self.new_dir, i))
             self.output = self.new_dir + '.out'
             self.comment = comment[:119] + '\n'
             self.partition = []
@@ -110,8 +120,9 @@ else:
             self.nubase = None
             self.fileinfo = None
             self.gui = True
-            self.arginfo = pd.read_excel('nml_fresco.xlsx')
-            self.arginfo.fillna('', inplace=True)
+            self.arginfo = pd.read_excel('nml_fresco.xlsx', sheet_name=None)
+            for i in self.arginfo:
+                self.arginfo[i].fillna('', inplace=True)
             self.iswritten = False
             self.isexecuted = False
 
@@ -147,47 +158,10 @@ else:
             self.nubase.drop(['_0', '_1', '_2', '_3', '_4', '_5', 'JPI', 'Mass excess', 'Mass excess err', 'flag', 'Half-life', 'Unit'],
                     axis=1, inplace=True)
 
-        def set_parameters(self, hcm=None, rmatch=None, rintp=None, hnl=None, rnl=None, centre=None, 
-                        rasym=None, accrcy=None, switch=None, ajswtch=None, rsp=None,
-                        jtmin=None, jtmax=None, absend=None, dry=None, rela=None, nearfa=None, jump=None, jbord=None,
-                        kqmax=None, pp=None, theta_range=None, koords=None, cutl=None, cutr=None, cutc=None,
-                        ips=None, it0=None, iter=None, iblock=None, pade=None, iso=None, nnu=None, maxl=None, minl=None, mtmin=None, epc=None,
-                        inh=None, plane=None, smallchan=None, smallcoup=None, cdcc=None,
-                        chans=None, listcc=None, treneg=None, cdetr=None, smats=None, xstabl=None, nlpl=None, waves=None, lampl=None, kfus=None, wdisk=None,
-                        pel=None, exl=None, lab=None, lin=None, lex=None, elab=None, nlab=None):
-            params = {'hcm':hcm, 'rmatch':rmatch, 'rintp':rintp, 'hnl':hnl, 'rnl':rnl, 'centre':centre, 'rasym':rasym,
-                        'accrcy':accrcy, 'switch':switch, 'ajswtch':ajswtch, 'rsp':rsp, 'jtmin':jtmin, 'jtmax':jtmax, 'absend':absend, 'dry':dry, 'rela':rela, 'nearfa':nearfa, 'jump':jump, 'jbord':jbord,
-                        'kqmax':kqmax, 'pp':pp, 'koords':koords, 'cutl':cutl, 'cutr':cutr, 'cutc':cutc,
-                        'ips':ips, 'it0':it0, 'iter':iter, 'iblock':iblock, 'pade':pade, 'iso':iso, 'nnu':nnu, 'maxl':maxl, 'minl':minl, 'mtmin':mtmin, 'epc':epc,
-                        'inh':inh, 'plane':plane, 'smallchan':smallchan, 'smallcoup':smallcoup, 'cdcc':cdcc,
-                        'chans':chans, 'listcc':listcc, 'treneg':treneg, 'cdetr':cdetr, 'smats':smats, 'xstabl':xstabl, 'nlpl':nlpl, 'waves':waves, 'lampl':lampl, 'kfus':kfus, 'wdisk':wdisk,
-                        'pel':pel, 'exl':exl, 'lab':lab, 'lin':lin, 'lex':lex, 'elab':elab, 'nlab':nlab}
+        def set_parameters(self, **kargs):
             self.iswritten = False
             self.isexecuted = False
-            if theta_range is not None:
-                if len(theta_range) == 2:
-                    self.parameters['thmin'] = min(theta_range)
-                    self.parameters['thmax'] = max(theta_range)
-                    self.parameters['thinc'] = 1
-                elif len(theta_range) == 3 and theta_range[2] > 0:
-                    self.parameters['thmin'] = theta_range[0]
-                    self.parameters['thmax'] = theta_range[1]
-                    self.parameters['thinc'] = theta_range[2]
-                else:
-                    print('theta_range invalid')
-                    return
-            for i in params:
-                if params[i] is not None:
-                    if params[i] is True:
-                        params[i] = 'T'
-                    elif params[i] is False:
-                        params[i] = 'F'
-                    self.parameters[i] = params[i]
-
-        def set_parameters_v1(self, **kargs):
-            self.iswritten = False
-            self.isexecuted = False
-            typedef = {'i':[int], 'f':[float, int], 'b':[bool, str], 's':[str]}
+            typedef = {'i':[int], 'f':[float, int], 'b':[bool, str], 's':[str], 'l':[list, int, float]}
 
             if 'theta_range' in kargs:
                 theta_range = kargs['theta_range']
@@ -209,7 +183,7 @@ else:
                 del(kargs['jt_range'])
 
             for i in kargs:
-                search = self.arginfo[self.arginfo['short_name'] == i.lower()]
+                search = self.arginfo['FRESCO'][self.arginfo['FRESCO']['short_name'] == i.lower()]
                 if search.empty:
                     print('Unknown arg:', i)
                     return
@@ -219,7 +193,6 @@ else:
                     print('Given:', type(kargs[i]))
                     return
                 if search['type'].iloc[0] == 'b':
-                    NotImplemented
                     if kargs[i] is True:
                         kargs[i] = 'T'
                     elif kargs[i] is False:
@@ -468,6 +441,8 @@ else:
                 return
             self.isexecuted = False
             print("Write input(" + self.filename + ")")
+            backup = os.getcwd()
+            os.chdir(self.new_dir)
             with open(self.filename, 'w') as f:
                 f.write(self.comment)
                 f.write('NAMELIST\n')
@@ -477,27 +452,22 @@ else:
                 self.__write_overlap(f)
                 self.__write_coupling(f)
             self.iswritten = True
+            print("Done!")
+            os.chdir(backup)
 
         def run(self):
             if not self.iswritten:
                 self.write_input()
+                print()
             if self.isexecuted:
                 return
             print("Run fresco(fresco < %s > %s)" % (self.filename, self.output))
-            try:
-                os.mkdir(self.new_dir)
-            except FileExistsError:
-                print(self.new_dir+'/', 'is already exists. Overwrite?(y/n)')
-                choice = input()
-                if choice != 'y':
-                    return
-                for i in os.listdir(self.new_dir):
-                    os.remove('%s/%s' % (self.new_dir, i))
-            self.output = self.new_dir + '/' + self.output
+            backup = os.getcwd()
+            os.chdir(self.new_dir)
             subprocess.call("fresco < %s > %s" % (self.filename, self.output), shell=True)
-            subprocess.call("mv fort.* %s" % self.new_dir, shell=True)
-            subprocess.call("mv %s %s" % (self.filename, self.new_dir), shell=True)
             self.isexecuted = True
+            print("Done!")
+            os.chdir(backup)
 
         def ls(self, *filenum):
             if not self.isexecuted:
@@ -543,7 +513,7 @@ else:
                         print('%10s : %10s' % (column[j], info[j]))
                     print()
 
-        def plot(self, *fileno: tuple, table=None):
+        def plot(self, *fileno: tuple):
             if not self.isexecuted:
                 self.run()
             graph_len = len(fileno)
@@ -570,8 +540,6 @@ else:
                     d_y = []
                     l_string = ''
                     l_istrue = False
-                    table_list = {}
-                    table_name = ''
                     while True:
                         line = shlex.split(f.readline())
                         if not line:
@@ -587,7 +555,6 @@ else:
                                     l_istrue = True
                                 elif line[1].lower() == 'string':
                                     l_string = line[3]
-                                    table_name = line[3]
                             elif cmd == 'g0':
                                 if line[1].lower() == 'type':
                                     if line[2].lower() == 'logy':
@@ -599,60 +566,67 @@ else:
                                 if line[1].lower() == 'label':
                                     plt.ylabel(line[2])
                         elif line[0].lower() == 'end' or line[0][0] == '&':
-                            if table is not None:
-                                table_list[table_name] = pd.DataFrame([[i,j] for i, j in zip(d_x, d_y)])
-                            else:
-                                plt.plot(d_x, d_y, marker='.', markersize=3, label=l_string)
-                                plt.legend(loc=0)
-                                if l_istrue:
-                                    plt.legend()
-                            table_name = ''
+                            plt.plot(d_x, d_y, marker='.', markersize=3, label=l_string)
+                            plt.legend(loc=0)
+                            if l_istrue:
+                                plt.legend()
                             d_x = []
                             d_y = []
                         elif not line[0].isalpha():
                             d_x.append(float(line[0]))
                             d_y.append(float(line[1]))
                     if d_x and d_y:
-                        if table is not None:
-                                table_list[table_name] = pd.DataFrame([[i,j] for i, j in zip(d_x, d_y)])
-                        else:
-                            plt.legend(loc=0)
-                            plt.plot(d_x, d_y, marker='.', markersize=3, label=l_string)
+                        plt.legend(loc=0)
+                        plt.plot(d_x, d_y, marker='.', markersize=3, label=l_string)
                         #if l_istrue:
                         #    plt.legend()
-            if table is not None:
-                return table_list
-            elif fileno:
-                plt.tight_layout()
-                if not self.gui:
-                    pngname = self.new_dir + '/' + ':'.join(map(str, fileno))
-                    plt.savefig(pngname)
-                    subprocess.call("wslview %s" % (pngname + '.png'), shell=True)
-                else:
-                    plt.show()
+            plt.tight_layout()
+            if not self.gui:
+                pngname = self.new_dir + '/' + ':'.join(map(str, fileno))
+                plt.savefig(pngname)
+                subprocess.call("wslview %s" % (pngname + '.png'), shell=True)
+            else:
+                plt.show()
 
-        def get_table(self, n):
-            return self.plot(n, table=1)
+        def get_table(self, n, p=False):
+            if not self.isexecuted:
+                self.run()
+            if type(n) == str and 'fort.' in n:
+                n = int(n[n.find('.') + 1:])
+            if type(n) == int:
+                fileinput = self.new_dir + '/fort.' + str(n)
+            else:
+                print("get_table: Invalid argument")
+                return
+            with open(fileinput, 'r') as f:
+                value = []
+                table_list = []
+                while True:
+                    line = shlex.split(f.readline())
+                    if not line:
+                        break
+                    for i in range(len(line)):
+                        try:
+                            line[i] = float(line[i])
+                        except:
+                            continue
+                    if type(line[0]) == float or line[0][0].isdigit():
+                        value.append(line)
+                    else:
+                        if len(value) != 0:
+                            if p == False:
+                                table_list.append(value)
+                            else:
+                                table_list.append(pd.DataFrame(value))
+                            value = []
+                if len(value) != 0:
+                    if p == False:
+                        table_list.append(value)
+                    else:
+                        table_list.append(pd.DataFrame(value))
+            return table_list
 
-        # def FRESCO(self, HCM=None, RMATCH=None, RINTP=None, HNL=None, RNL=None, CENTRE=None, 
-        #                 RASYM=None, ACCRCY=None, SWITCH=None, AJSWTCH=None,
-        #                 JTMIN=None, JTMAX=None, ABSEND=None, DRY=None, RELA=None, NEARFA=None, JUMP=None, JBORD=None,
-        #                 KQMAX=None, PP=None, KOORDS=None, CUTL=None, CUTR=None, CUTC=None,
-        #                 IPS=None, IT0=None, ITER=None, IBLOCK=None, PADE=None, ISO=None, NNU=None, MAXL=None, MINL=None, MTMIN=None, EPC=None,
-        #                 INH=None, PLANE=None, SMALLCHAN=None, SMALLCOUP=None,
-        #                 CHANS=None, LISTCC=None, TRENEG=None, CDETR=None, SMATS=None, XSTABL=None, NLPL=None, WAVES=None, LAMPL=None, KFUS=None, WDISK=None,
-        #                 PEL=None, EXL=None, LAB=None, LIN=None, LEX=None, ELAB=None, NLAB=None):
-        #     params = {'hcm':HCM, 'rmatch':RMATCH, 'rintp':RINTP, 'hnl':HNL, 'rnl':RNL, 'centre':CENTRE,
-        #                 'rasym':RASYM, 'accrcy':ACCRCY, 'switch':SWITCH, 'ajswtch':AJSWTCH,
-        #                 'jtmin':JTMIN, 'jtmax':JTMAX, 'absend':ABSEND, 'dry':DRY, 'rela':RELA, 'nearfa':NEARFA, 'jump':JUMP, 'jbord':JBORD,
-        #                 'kqmax':KQMAX, 'pp':PP, 'koords':KOORDS, 'cutl':CUTL, 'cutr':CUTR, 'cutc':CUTC,
-        #                 'ips':IPS, 'it0':IT0, 'iter':ITER, 'iblock':IBLOCK, 'pade':PADE, 'iso':ISO, 'nnu':NNU, 'maxl':MAXL, 'minl':MINL, 'mtmin':MTMIN, 'epc':EPC,
-        #                 'inh':INH, 'plane':PLANE, 'smallchan':SMALLCHAN, 'smallcoup':SMALLCOUP,
-        #                 'chans':CHANS, 'listcc':LISTCC, 'treneg':TRENEG, 'cdetr':CDETR, 'smats':SMATS, 'xstabl':XSTABL, 'nlpl':NLPL, 'waves':WAVES, 'lampl':LAMPL, 'kfus':KFUS, 'wdisk':WDISK,
-        #                 'pel':PEL, 'exl':EXL, 'lab':LAB, 'lin':LIN, 'lex':LEX, 'elab':ELAB, 'nlab':NLAB}
-        #     for i in params:
-        #         if params[i] is not None:
-        #             self.parameters[i] = params[i]
+
 
         def FRESCO(self, **kargs):
             for i in kargs:
@@ -708,3 +682,26 @@ else:
                 self.coupling[-1]['cfp'] = [cfp]
             else:
                 self.coupling[-1]['cfp'].append(cfp)
+
+        def print(self, fileno, limit=0xffffffff):
+            if not self.isexecuted:
+                self.run()
+            if 'fort.' + str(fileno) not in os.listdir(self.new_dir):
+                print('fort.'+str(fileno)+' is not exists')
+                return
+            with open(self.new_dir + '/fort.' + str(fileno)) as wfile:
+                while limit != 0:
+                    l = wfile.readline()
+                    if not l:
+                        break
+                    print(l, end='')
+                    limit -= 1
+                print()
+
+        def help(self, func=None, arg=None):
+            if func is None:
+                NotImplemented
+            elif arg is None:
+                NotImplemented
+            else:
+                NotImplemented
