@@ -624,7 +624,7 @@ else:
                         table_list.append(value)
                     else:
                         table_list.append(pd.DataFrame(value))
-            return table_list
+            return table_list if len(table_list) != 1 else table_list[0]
 
 
 
@@ -702,6 +702,11 @@ else:
             if func is None:
                 NotImplemented
             elif arg is None:
-                NotImplemented
+                print(self.arginfo[func])
             else:
-                NotImplemented
+                search = self.arginfo[func][self.arginfo[func]['short_name'] == arg]
+                if search.empty:
+                    print('Cannot find \'', arg, '\' in \'', func, '\'', sep='')
+                    return
+                else:
+                    print(self.arginfo[func].iloc[search.index[0]])
