@@ -464,10 +464,11 @@ else:
             print("Run fresco(fresco < %s > %s)" % (self.filename, self.output))
             backup = os.getcwd()
             os.chdir(self.new_dir)
-            subprocess.call("fresco < %s > %s" % (self.filename, self.output), shell=True)
+            ret = subprocess.call("fresco < %s > %s" % (self.filename, self.output), shell=True)
             self.isexecuted = True
             print("Done!")
             os.chdir(backup)
+            return ret
 
         def ls(self, *filenum):
             if not self.isexecuted:
@@ -588,7 +589,7 @@ else:
             else:
                 plt.show()
 
-        def get_table(self, n, p=False):
+        def get_table(self, n, df=False):
             if not self.isexecuted:
                 self.run()
             if type(n) == str and 'fort.' in n:
@@ -614,13 +615,13 @@ else:
                         value.append(line)
                     else:
                         if len(value) != 0:
-                            if p == False:
+                            if df == False:
                                 table_list.append(value)
                             else:
                                 table_list.append(pd.DataFrame(value))
                             value = []
                 if len(value) != 0:
-                    if p == False:
+                    if df == False:
                         table_list.append(value)
                     else:
                         table_list.append(pd.DataFrame(value))
